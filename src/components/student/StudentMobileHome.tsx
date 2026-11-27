@@ -16,8 +16,6 @@ import {
   Library,
   LogIn,
   LogOut,
-  Megaphone,
-  Sparkles,
 } from 'lucide-react';
 import heroCampusImg from '../../assets/images/student_hero_campus_1794996856983.jpg';
 import {
@@ -100,7 +98,7 @@ interface StudentMobileHomeProps {
   onOpenLms?: () => void;
 }
 
-type StudentHomeTab = 'today' | 'academics' | 'menu' | 'news';
+type StudentHomeTab = 'today' | 'academics' | 'menu';
 
 const getBarTone = (percent: number): string => {
   if (percent >= 80) return 'bg-emerald-600 dark:bg-emerald-500';
@@ -349,32 +347,17 @@ export const StudentMobileHome: React.FC<StudentMobileHomeProps> = ({
     },
     {
       id: 'academics',
-      label: lang === 'th' ? 'การเรียน' : 'Progress',
+      label: lang === 'th' ? 'ผลการเรียน' : 'Progress',
       icon: <GraduationCap className="w-3.5 h-3.5 shrink-0" />,
     },
     {
       id: 'menu',
-      label: lang === 'th' ? 'เมนู' : 'Menus',
+      label: lang === 'th' ? 'บริการอื่นๆ' : 'Services',
       icon: <LayoutGrid className="w-3.5 h-3.5 shrink-0" />,
     },
-    ...(canOpenAnnouncements
-      ? [
-          {
-            id: 'news' as const,
-            label:
-              scopedAnnouncements.length > 0
-                ? `${lang === 'th' ? 'ประกาศ' : 'News'} (${scopedAnnouncements.length})`
-                : lang === 'th'
-                  ? 'ประกาศ'
-                  : 'News',
-            icon: <Megaphone className="w-3.5 h-3.5 shrink-0" />,
-          },
-        ]
-      : []),
   ];
 
-  const effectiveTab: StudentHomeTab =
-    activeHomeTab === 'news' && !canOpenAnnouncements ? 'today' : activeHomeTab;
+  const effectiveTab: StudentHomeTab = activeHomeTab;
 
   return (
     <div className="flex flex-col gap-3 pb-2 animate-in fade-in duration-150">
@@ -488,13 +471,11 @@ export const StudentMobileHome: React.FC<StudentMobileHomeProps> = ({
         )}
       </section>
 
-      {/* 2. COMPACT SEGMENTED TAB NAVIGATION */}
+      {/* 2. COMPACT SEGMENTED 3-TAB NAVIGATION */}
       <div
         role="tablist"
         aria-label={lang === 'th' ? 'เมนูหน้านักเรียน' : 'Student sections'}
-        className={`grid gap-1 p-1 rounded-2xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] ${
-          tabs.length === 4 ? 'grid-cols-4' : 'grid-cols-3'
-        }`}
+        className="grid grid-cols-3 gap-1 p-1 rounded-2xl bg-[var(--color-card-subtle)] border border-[var(--color-border)]"
       >
         {tabs.map((tab) => {
           const isSelected = effectiveTab === tab.id;
@@ -921,61 +902,15 @@ export const StudentMobileHome: React.FC<StudentMobileHomeProps> = ({
         </div>
       )}
 
-      {/* 5. TAB PANEL: ALL MENUS (GROUPED CLEAN DIRECTORY LIST VIEW) */}
+      {/* 5. TAB PANEL: OTHER SERVICES (Zero duplicates of Today/Progress/BottomNav) */}
       {effectiveTab === 'menu' && (
         <div role="tabpanel" className="space-y-3 animate-in fade-in duration-150">
-          {(canViewTimetable || canViewGrades || canAccessHomework || (canOpenLms && Boolean(onOpenLms))) && (
+          {((canOpenLms && Boolean(onOpenLms)) || canViewTimetable) && (
             <section className="space-y-1.5">
               <h3 className="px-1 text-xs font-bold text-[var(--color-text-muted)]">
-                {lang === 'th' ? 'การเรียนประจำวัน' : 'Daily Learning'}
+                {lang === 'th' ? 'บทเรียนและปฏิทิน' : 'Lessons & Calendar'}
               </h3>
               <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] divide-y divide-[var(--color-border)] overflow-hidden">
-                {canViewTimetable && (
-                  <StudentDirectoryRow
-                    icon={<Calendar className="w-4 h-4 text-[var(--color-primary-text)]" />}
-                    label={lang === 'th' ? 'ตารางเรียน' : 'Timetable'}
-                    meta={
-                      todayHoliday || isWeekend
-                        ? lang === 'th'
-                          ? 'วันหยุด'
-                          : 'Day off'
-                        : lang === 'th'
-                          ? `${todayMySlots.length} คาบวันนี้`
-                          : `${todayMySlots.length} classes`
-                    }
-                    onClick={() => onOpenTimetable('day')}
-                  />
-                )}
-                {canViewGrades && (
-                  <StudentDirectoryRow
-                    icon={<GraduationCap className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />}
-                    label={lang === 'th' ? 'ผลการเรียน' : 'Grades'}
-                    meta={
-                      realGpax !== null
-                        ? `GPAX ${realGpax.toFixed(2)}`
-                        : lang === 'th'
-                          ? `${scopedCourses.length} วิชา`
-                          : `${scopedCourses.length} courses`
-                    }
-                    onClick={onOpenGrades}
-                  />
-                )}
-                {canAccessHomework && (
-                  <StudentDirectoryRow
-                    icon={<BookOpen className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />}
-                    label={lang === 'th' ? 'การบ้าน' : 'Homework'}
-                    meta={
-                      pendingHomeworkCount > 0
-                        ? lang === 'th'
-                          ? `รอส่ง ${pendingHomeworkCount} งาน`
-                          : `${pendingHomeworkCount} due`
-                        : lang === 'th'
-                          ? 'ส่งครบแล้ว'
-                          : 'Caught up'
-                    }
-                    onClick={onOpenHomework}
-                  />
-                )}
                 {canOpenLms && onOpenLms && (
                   <StudentDirectoryRow
                     icon={<Library className="w-4 h-4 text-sky-600 dark:text-sky-400" />}
@@ -988,6 +923,14 @@ export const StudentMobileHome: React.FC<StudentMobileHomeProps> = ({
                     onClick={onOpenLms}
                   />
                 )}
+                {canViewTimetable && (
+                  <StudentDirectoryRow
+                    icon={<Calendar className="w-4 h-4 text-rose-500 dark:text-rose-400" />}
+                    label={lang === 'th' ? 'ปฏิทินเรียน & วันหยุดราชการ' : 'Calendar & Public Holidays'}
+                    meta=".ics"
+                    onClick={() => onOpenTimetable('calendar')}
+                  />
+                )}
               </div>
             </section>
           )}
@@ -995,7 +938,6 @@ export const StudentMobileHome: React.FC<StudentMobileHomeProps> = ({
           {(canOpenPortfolio ||
             canOpenLeave ||
             canPlayGames ||
-            canOpenAnnouncements ||
             (canViewDigitalId && Boolean(onOpenDigitalId)) ||
             Boolean(onOpenCareerQuest)) && (
             <section className="space-y-1.5">
@@ -1043,14 +985,6 @@ export const StudentMobileHome: React.FC<StudentMobileHomeProps> = ({
                     onClick={onOpenGames}
                   />
                 )}
-                {!canPlayGames && canOpenAnnouncements && (
-                  <StudentDirectoryRow
-                    icon={<Megaphone className="w-4 h-4 text-teal-600 dark:text-teal-400" />}
-                    label={lang === 'th' ? 'ประกาศโรงเรียน' : 'Announcements'}
-                    meta={`${scopedAnnouncements.length} ${lang === 'th' ? 'ข่าวสาร' : 'posts'}`}
-                    onClick={() => onOpenAnnouncements()}
-                  />
-                )}
                 {canViewDigitalId && onOpenDigitalId && (
                   <StudentDirectoryRow
                     icon={<CreditCard className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />}
@@ -1069,66 +1003,6 @@ export const StudentMobileHome: React.FC<StudentMobileHomeProps> = ({
                 )}
               </div>
             </section>
-          )}
-        </div>
-      )}
-
-      {/* 6. TAB PANEL: SCHOOL ANNOUNCEMENTS */}
-      {effectiveTab === 'news' && canOpenAnnouncements && (
-        <div role="tabpanel" className="flex flex-col gap-2 animate-in fade-in duration-150">
-          {scopedAnnouncements.length > 0 ? (
-            <>
-              {scopedAnnouncements.slice(0, 3).map((ann) => (
-                <button
-                  key={ann.id}
-                  type="button"
-                  onClick={() => onOpenAnnouncements(ann)}
-                  className="w-full rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] hover:border-[var(--color-primary)] p-3.5 text-left space-y-1 transition active:scale-[0.99] cursor-pointer"
-                >
-                  <div className="flex items-center justify-between gap-2 text-[11px] text-[var(--color-text-muted)] tabular-nums">
-                    <span className="font-semibold text-[var(--color-primary-text)] flex items-center gap-1 truncate">
-                      <BellRing className="w-3.5 h-3.5 shrink-0" />
-                      <span className="truncate">{ann.category}</span>
-                    </span>
-                    <span className="shrink-0">{ann.publishedAt}</span>
-                  </div>
-                  <h3 className="text-sm font-bold text-[var(--color-text-title)] line-clamp-1">
-                    {ann.title}
-                  </h3>
-                  <p className="text-xs text-[var(--color-text-body)] line-clamp-2 leading-relaxed">
-                    {ann.content}
-                  </p>
-                </button>
-              ))}
-              <button
-                type="button"
-                onClick={() => onOpenAnnouncements()}
-                className="w-full min-h-[44px] rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] text-xs font-semibold text-[var(--color-primary-text)] flex items-center justify-center gap-1.5 cursor-pointer tabular-nums"
-              >
-                <span>
-                  {lang === 'th'
-                    ? `ดูประกาศทั้งหมด (${scopedAnnouncements.length})`
-                    : `View all announcements (${scopedAnnouncements.length})`}
-                </span>
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </>
-          ) : (
-            <button
-              type="button"
-              onClick={() => onOpenAnnouncements()}
-              className="w-full min-h-[56px] rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] hover:border-[var(--color-primary)] px-4 py-3 text-left flex items-center justify-between gap-2 transition cursor-pointer"
-            >
-              <span className="text-xs text-[var(--color-text-muted)] flex items-center gap-2">
-                <Megaphone className="w-4 h-4 shrink-0" />
-                <span>
-                  {lang === 'th'
-                    ? 'ยังไม่มีประกาศใหม่ · แตะเพื่อดูคลังประกาศ'
-                    : 'No recent announcements · View archive'}
-                </span>
-              </span>
-              <ChevronRight className="w-4 h-4 text-[var(--color-text-muted)] shrink-0" />
-            </button>
           )}
         </div>
       )}

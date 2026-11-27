@@ -18,6 +18,7 @@ import type {
   UserRole,
 } from '../../types';
 import type { LeaveApprovalScope } from '../../lib/leaveApprovalRouting';
+import type { CorrectionPrefillSeed } from '../../components/attendance/AttendanceCorrectionHub';
 
 export type AttendanceSubTab =
   | 'selfie_mobile'
@@ -98,6 +99,8 @@ export interface MobileAttendanceViewProps {
     scope?: LeaveApprovalScope
   ) => void;
   initialSubTab?: AttendanceSubTab;
+  initialCorrectionPrefill?: CorrectionPrefillSeed | null;
+  initialLeaveDate?: string;
   embeddedMobile?: boolean;
   initialPeriodCourseId?: string;
   initialPeriodNumber?: number;

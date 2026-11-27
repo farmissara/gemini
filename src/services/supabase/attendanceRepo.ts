@@ -81,6 +81,28 @@ export async function saveStudentSelfAttendance(record: AttendanceRecord, userId
   return photoStoragePath;
 }
 
+export async function uploadAttendanceSelfiePhoto(params: {
+  schoolId: string;
+  userId: string;
+  recordId: string;
+  photoDataUrl: string;
+}): Promise<string | undefined> {
+  const client = getSupabaseClient();
+  if (!client) return undefined;
+  if (!params.photoDataUrl.startsWith('data:image/')) return undefined;
+  try {
+    const photoBlob = await (await fetch(params.photoDataUrl)).blob();
+    const photoStoragePath = `${params.schoolId}/${params.userId}/${params.recordId}.jpg`;
+    const { error } = await client.storage
+      .from('attendance-selfies')
+      .upload(photoStoragePath, photoBlob, { contentType: 'image/jpeg', upsert: false });
+    if (error) return undefined;
+    return photoStoragePath;
+  } catch {
+    return undefined;
+  }
+}
+
 export async function saveQueuedAttendanceToDb(record: {
   id: string;
   schoolId: string;
@@ -92,6 +114,7 @@ export async function saveQueuedAttendanceToDb(record: {
   remarks?: string;
   recordType?: AttendanceCheckType;
   userName?: string;
+  photoUrl?: string;
 }): Promise<void> {
   const client = getSupabaseClient();
   if (!client) throw new Error('Supabase is unavailable.');
@@ -110,12 +133,13 @@ export async function saveQueuedAttendanceToDb(record: {
     ...baseRow,
     record_type: record.recordType || 'check_in',
     user_name: record.userName || null,
+    ...(record.photoUrl ? { photo_url: record.photoUrl } : {}),
   });
   if (!error) return;
   if (
     error.code === 'PGRST204' ||
     error.code === '42703' ||
-    /record_type|user_name|schema cache|could not find the '.*' column/i.test(error.message)
+    /photo_url|record_type|user_name|schema cache|could not find the '.*' column/i.test(error.message)
   ) {
     const fallback = await client.from('attendance').upsert(baseRow);
     if (!fallback.error) return;

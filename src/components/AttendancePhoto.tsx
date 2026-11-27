@@ -29,10 +29,16 @@ interface AttendancePhotoProps extends React.ImgHTMLAttributes<HTMLImageElement>
 /** Loads private attendance photos only when the image is near the viewport. */
 export default function AttendancePhoto({ src, fallbackSrc, onError, ...props }: AttendancePhotoProps) {
   const imageRef = useRef<HTMLImageElement>(null);
-  const [shouldLoad, setShouldLoad] = useState(false);
-  const [resolvedSrc, setResolvedSrc] = useState<string>();
+  const directRemote = typeof src === 'string' && src.length > 0 && isRemoteUrl(src);
+  const [shouldLoad, setShouldLoad] = useState(directRemote);
+  const [resolvedSrc, setResolvedSrc] = useState<string | undefined>(directRemote ? src : undefined);
 
   useEffect(() => {
+    if (directRemote) {
+      setShouldLoad(true);
+      setResolvedSrc(src);
+      return;
+    }
     const image = imageRef.current;
     if (!image || shouldLoad) return;
     if (typeof IntersectionObserver === 'undefined') {
@@ -47,7 +53,7 @@ export default function AttendancePhoto({ src, fallbackSrc, onError, ...props }:
     }, { rootMargin: '160px' });
     observer.observe(image);
     return () => observer.disconnect();
-  }, [shouldLoad]);
+  }, [directRemote, shouldLoad, src]);
 
   useEffect(() => {
     if (!shouldLoad || typeof src !== 'string' || !src) return;
@@ -70,7 +76,9 @@ export default function AttendancePhoto({ src, fallbackSrc, onError, ...props }:
     return () => { cancelled = true; };
   }, [fallbackSrc, shouldLoad, src]);
 
-  return <img {...props} ref={imageRef} src={shouldLoad ? (resolvedSrc || fallbackSrc) : fallbackSrc} loading="lazy" onError={(event) => {
+  const effectiveSrc = directRemote ? src : shouldLoad ? (resolvedSrc || fallbackSrc) : fallbackSrc;
+
+  return <img {...props} ref={imageRef} src={effectiveSrc} loading={directRemote ? 'eager' : 'lazy'} onError={(event) => {
     if (fallbackSrc && event.currentTarget.src !== fallbackSrc) event.currentTarget.src = fallbackSrc;
     onError?.(event);
   }} />;

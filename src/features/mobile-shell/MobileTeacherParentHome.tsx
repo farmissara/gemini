@@ -4,17 +4,14 @@ import {
   BookOpen,
   Calendar,
   ChevronRight,
-  ClipboardCheck,
   Clock,
   Compass,
-  CreditCard,
   FileText,
   Gamepad2,
   HeartHandshake,
   HeartPulse,
   LayoutGrid,
   LogIn,
-  Megaphone,
   User,
   Users,
 } from 'lucide-react';
@@ -87,7 +84,7 @@ interface MobileTeacherParentHomeProps {
   setActiveGameView: (view: ActiveGameView) => void;
 }
 
-type TeacherParentHomeTab = 'today' | 'tools' | 'more';
+type TeacherParentHomeTab = 'today' | 'tools';
 
 interface DirectoryRowProps {
   icon: React.ReactNode;
@@ -125,8 +122,6 @@ export const MobileTeacherParentHome: React.FC<MobileTeacherParentHomeProps> = (
   canOpenLeave,
   canOpenCareerQuest,
   canPlayGames,
-  canOpenAnnouncements,
-  canViewDigitalId,
   canAccessHomework = false,
   canOpenLms = false,
   canOpenBehaviorSdq = false,
@@ -137,13 +132,11 @@ export const MobileTeacherParentHome: React.FC<MobileTeacherParentHomeProps> = (
   todayMySlots,
   schoolPeriods,
   periodAttendance,
-  scopedAnnouncementsCount,
   pendingLeavesCount,
   scopedAssignmentsCount = 0,
   lessonsCount = 0,
   execMetrics,
   getSlotTodayCheckStatus,
-  onOpenStudentAttendance,
   openPeriodCheckinFromSlot,
   setMobileAttendanceInitialSubTab,
   setMobileTimetableMode,
@@ -167,24 +160,13 @@ export const MobileTeacherParentHome: React.FC<MobileTeacherParentHomeProps> = (
   const tabs: Array<{ id: TeacherParentHomeTab; label: string; icon: React.ReactNode }> = [
     {
       id: 'today',
-      label: isTeacher ? (lang === 'th' ? 'สอนวันนี้' : 'Today') : lang === 'th' ? 'วันนี้' : 'Today',
+      label: isTeacher ? (lang === 'th' ? 'วันนี้' : 'Today') : lang === 'th' ? 'วันนี้' : 'Today',
       icon: <Clock className="w-3.5 h-3.5 shrink-0" />,
     },
     {
       id: 'tools',
-      label: isTeacher ? (lang === 'th' ? 'งานครู' : 'Tools') : lang === 'th' ? 'เมนู' : 'Menus',
+      label: lang === 'th' ? 'บริการอื่นๆ' : 'Services',
       icon: <LayoutGrid className="w-3.5 h-3.5 shrink-0" />,
-    },
-    {
-      id: 'more',
-      label: isTeacher
-        ? lang === 'th'
-          ? 'ประกาศ/อื่นๆ'
-          : 'News/More'
-        : lang === 'th'
-          ? 'ประกาศ'
-          : 'News',
-      icon: <Megaphone className="w-3.5 h-3.5 shrink-0" />,
     },
   ];
 
@@ -219,7 +201,7 @@ export const MobileTeacherParentHome: React.FC<MobileTeacherParentHomeProps> = (
 
   return (
     <div className="flex flex-col gap-2.5 pb-2 animate-in fade-in duration-150">
-      {/* 1. COMPACT PROFILE IDENTITY STRIP */}
+      {/* 1. COMPACT PROFILE IDENTITY STRIP (Tap to open Profile/Digital ID/Settings) */}
       <button
         type="button"
         onClick={() => setActiveTab('profile')}
@@ -263,11 +245,11 @@ export const MobileTeacherParentHome: React.FC<MobileTeacherParentHomeProps> = (
         <ChevronRight className="w-4 h-4 text-[var(--color-text-muted)] shrink-0" />
       </button>
 
-      {/* 2. SEGMENTED 3-TAB BAR */}
+      {/* 2. NON-OVERLAPPING 2-TAB BAR */}
       <div
         role="tablist"
-        aria-label={lang === 'th' ? 'หมวดเมนูหลัก' : 'Home sections'}
-        className="grid grid-cols-3 gap-1 p-1 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)]"
+        aria-label={lang === 'th' ? 'หมวดหน้าหลัก' : 'Home sections'}
+        className="grid grid-cols-2 gap-1 p-1 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)]"
       >
         {tabs.map((tab) => {
           const isSelected = homeTab === tab.id;
@@ -278,7 +260,7 @@ export const MobileTeacherParentHome: React.FC<MobileTeacherParentHomeProps> = (
               role="tab"
               aria-selected={isSelected}
               onClick={() => setHomeTab(tab.id)}
-              className={`min-h-[38px] px-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer whitespace-nowrap shrink-0 ${
+              className={`min-h-[40px] px-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer whitespace-nowrap shrink-0 ${
                 isSelected
                   ? 'bg-[var(--color-card)] text-[var(--color-primary-text)] shadow-xs border border-[var(--color-border)]'
                   : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] border border-transparent'
@@ -315,100 +297,61 @@ export const MobileTeacherParentHome: React.FC<MobileTeacherParentHomeProps> = (
             />
           )}
 
-          {isTeacher && (
+          {isTeacher && canSelfCheckin && (
             <div className="grid grid-cols-2 gap-2">
-              {canSelfCheckin && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMobileAttendanceInitialSubTab('selfie_mobile');
-                    setActiveTab('checkin');
-                  }}
-                  className="min-h-[68px] p-3 rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] hover:border-emerald-500 text-left flex flex-col justify-between cursor-pointer transition"
-                >
-                  <div className="flex items-center justify-between gap-1 text-emerald-700 dark:text-emerald-400">
-                    <LogIn className="w-4 h-4 shrink-0" />
-                    <ChevronRight className="w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0" />
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold text-[var(--color-text-title)] truncate">
-                      {lang === 'th' ? 'เช็คชื่อเข้า/ออกโรงเรียน' : 'School Check-in/Out'}
-                    </p>
-                    <p className="text-[11px] text-[var(--color-text-muted)] tabular-nums truncate">
-                      {todayCheckin
-                        ? lang === 'th'
-                          ? `เข้า ${todayCheckin.time.slice(0, 5)} น.`
-                          : `In ${todayCheckin.time.slice(0, 5)}`
-                        : lang === 'th'
-                          ? 'ลงเวลาวันนี้'
-                          : 'Clock in'}
-                    </p>
-                  </div>
-                </button>
-              )}
-
-              {canSelfCheckin && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMobileAttendanceInitialSubTab('period_checkin');
-                    setActiveTab('checkin');
-                  }}
-                  className="min-h-[68px] p-3 rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] hover:border-[var(--color-primary)] text-left flex flex-col justify-between cursor-pointer transition"
-                >
-                  <div className="flex items-center justify-between gap-1 text-[var(--color-primary-text)]">
-                    <Users className="w-4 h-4 shrink-0" />
-                    <ChevronRight className="w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0" />
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold text-[var(--color-text-title)] truncate">
-                      {lang === 'th' ? 'เช็คชื่อเข้า/ออกคาบเรียน' : 'Period Check-in/Out'}
-                    </p>
-                    <p className="text-[11px] text-[var(--color-text-muted)] tabular-nums truncate">
-                      {todayHoliday || isWeekend
-                        ? lang === 'th'
-                          ? 'วันหยุด'
-                          : 'Day off'
-                        : `${todayMySlots.length} ${lang === 'th' ? 'คาบวันนี้' : 'periods'}`}
-                    </p>
-                  </div>
-                </button>
-              )}
-
-              {!featuredSlot && canViewTimetable && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMobileTimetableMode('day');
-                    setActiveTab('timetable');
-                  }}
-                  className="min-h-[60px] px-3 py-2.5 rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] hover:border-[var(--color-primary)] text-left flex items-center justify-between gap-2 cursor-pointer transition"
-                >
-                  <span className="flex items-center gap-2 min-w-0">
-                    <Calendar className="w-4 h-4 text-sky-600 dark:text-sky-400 shrink-0" />
-                    <span className="text-xs font-bold text-[var(--color-text-title)] truncate">
-                      {lang === 'th' ? 'ตารางสอนวันนี้' : 'Schedule'}
-                    </span>
-                  </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileAttendanceInitialSubTab('selfie_mobile');
+                  setActiveTab('checkin');
+                }}
+                className="min-h-[68px] p-3 rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] hover:border-emerald-500 text-left flex flex-col justify-between cursor-pointer transition"
+              >
+                <div className="flex items-center justify-between gap-1 text-emerald-700 dark:text-emerald-400">
+                  <LogIn className="w-4 h-4 shrink-0" />
                   <ChevronRight className="w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0" />
-                </button>
-              )}
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-[var(--color-text-title)] truncate">
+                    {lang === 'th' ? 'เช็คชื่อเข้า/ออกโรงเรียน' : 'School Check-in/Out'}
+                  </p>
+                  <p className="text-[11px] text-[var(--color-text-muted)] tabular-nums truncate">
+                    {todayCheckin
+                      ? lang === 'th'
+                        ? `เข้า ${todayCheckin.time.slice(0, 5)} น.`
+                        : `In ${todayCheckin.time.slice(0, 5)}`
+                      : lang === 'th'
+                        ? 'ลงเวลาวันนี้'
+                        : 'Clock in'}
+                  </p>
+                </div>
+              </button>
 
-              {!featuredSlot && canOpenLeave && (
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('leave')}
-                  className="min-h-[60px] px-3 py-2.5 rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] hover:border-amber-500 text-left flex items-center justify-between gap-2 cursor-pointer transition"
-                >
-                  <span className="flex items-center gap-2 min-w-0">
-                    <FileText className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
-                    <span className="text-xs font-bold text-[var(--color-text-title)] truncate">
-                      {lang === 'th' ? 'ยื่นใบลา' : 'Leave'}
-                    </span>
-                  </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileAttendanceInitialSubTab('period_checkin');
+                  setActiveTab('checkin');
+                }}
+                className="min-h-[68px] p-3 rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] hover:border-[var(--color-primary)] text-left flex flex-col justify-between cursor-pointer transition"
+              >
+                <div className="flex items-center justify-between gap-1 text-[var(--color-primary-text)]">
+                  <Users className="w-4 h-4 shrink-0" />
                   <ChevronRight className="w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0" />
-                </button>
-              )}
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-[var(--color-text-title)] truncate">
+                    {lang === 'th' ? 'เช็คชื่อเข้า/ออกคาบเรียน' : 'Period Check-in/Out'}
+                  </p>
+                  <p className="text-[11px] text-[var(--color-text-muted)] tabular-nums truncate">
+                    {todayHoliday || isWeekend
+                      ? lang === 'th'
+                        ? 'วันหยุด'
+                        : 'Day off'
+                      : `${todayMySlots.length} ${lang === 'th' ? 'คาบวันนี้' : 'periods'}`}
+                  </p>
+                </div>
+              </button>
             </div>
           )}
 
@@ -442,117 +385,87 @@ export const MobileTeacherParentHome: React.FC<MobileTeacherParentHomeProps> = (
                 <ChevronRight className="w-4 h-4 text-[var(--color-text-muted)] shrink-0" />
               </button>
 
-              <div className="grid grid-cols-2 gap-2">
-                {canViewTimetable && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMobileTimetableMode('day');
-                      setActiveTab('timetable');
-                    }}
-                    className="min-h-[60px] px-3 py-2.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--color-primary)] text-left flex items-center gap-2.5 cursor-pointer"
-                  >
-                    <Calendar className="w-4 h-4 text-blue-600 shrink-0" />
-                    <span className="text-xs font-bold text-[var(--color-text-title)] truncate">
-                      {lang === 'th' ? 'ตารางเรียน' : 'Timetable'}
-                    </span>
-                  </button>
-                )}
-                {canOpenLeave && (
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('leave')}
-                    className="min-h-[60px] px-3 py-2.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--color-primary)] text-left flex items-center gap-2.5 cursor-pointer"
-                  >
+              {canOpenLeave && (
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('leave')}
+                  className="w-full min-h-[54px] px-3.5 py-2.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--color-primary)] text-left flex items-center justify-between gap-2.5 cursor-pointer"
+                >
+                  <span className="flex items-center gap-2.5 min-w-0">
                     <FileText className="w-4 h-4 text-amber-600 shrink-0" />
-                    <div className="min-w-0">
-                      <p className="text-xs font-bold text-[var(--color-text-title)] truncate">
-                        {lang === 'th' ? 'ยื่นใบลา' : 'Leave'}
-                      </p>
-                      {pendingLeavesCount > 0 && (
-                        <p className="text-[11px] text-[var(--color-text-muted)] tabular-nums">
-                          {pendingLeavesCount} {lang === 'th' ? 'รออนุมัติ' : 'pending'}
-                        </p>
-                      )}
-                    </div>
-                  </button>
-                )}
-              </div>
+                    <span className="text-xs font-bold text-[var(--color-text-title)] truncate">
+                      {lang === 'th' ? 'ยื่นใบลาให้บุตรหลาน' : 'Submit Leave Request'}
+                    </span>
+                  </span>
+                  <span className="flex items-center gap-1.5 text-xs text-[var(--color-text-muted)] tabular-nums shrink-0">
+                    {pendingLeavesCount > 0 && (
+                      <span>{pendingLeavesCount} {lang === 'th' ? 'รออนุมัติ' : 'pending'}</span>
+                    )}
+                    <ChevronRight className="w-4 h-4" />
+                  </span>
+                </button>
+              )}
             </div>
           )}
         </div>
       )}
 
-      {/* 4. TAB PANEL: GROUPED CLEAN LIST DIRECTORY */}
+      {/* 4. TAB PANEL: SERVICES (Zero duplicates of Today/Header/BottomNav) */}
       {homeTab === 'tools' && (
         <div role="tabpanel" className="space-y-3 animate-in fade-in duration-150">
           {isTeacher && (
             <>
-              <div className="space-y-1.5">
-                <h3 className="px-1 text-xs font-bold text-[var(--color-text-muted)]">
-                  {lang === 'th' ? 'การสอนและเวลาเรียน' : 'Teaching & Attendance'}
-                </h3>
-                <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] divide-y divide-[var(--color-border)] overflow-hidden">
-                  {canViewTimetable && (
-                    <DirectoryRow
-                      icon={<Calendar className="w-4 h-4 text-sky-600 dark:text-sky-400" />}
-                      label={lang === 'th' ? 'ตารางสอนวันนี้' : 'Schedule'}
-                      meta={
-                        todayHoliday
-                          ? lang === 'th'
-                            ? 'วันหยุด'
-                            : 'Holiday'
-                          : `${todayMySlots.length} ${lang === 'th' ? 'คาบ' : 'slots'}`
-                      }
-                      onClick={() => {
-                        setMobileTimetableMode('day');
-                        setActiveTab('timetable');
-                      }}
-                    />
-                  )}
-                  {canSelfCheckin && (
-                    <DirectoryRow
-                      icon={<LogIn className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />}
-                      label={lang === 'th' ? 'เช็คชื่อเข้า/ออกโรงเรียน' : 'School Check-in/Out'}
-                      meta={todayCheckin ? `${todayCheckin.time.slice(0, 5)} น.` : undefined}
-                      onClick={() => {
-                        setMobileAttendanceInitialSubTab('selfie_mobile');
-                        setActiveTab('checkin');
-                      }}
-                    />
-                  )}
-                  {canSelfCheckin && (
-                    <DirectoryRow
-                      icon={<ClipboardCheck className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />}
-                      label={lang === 'th' ? 'เช็คชื่อเข้า/ออกคาบเรียน' : 'Period Check-in/Out'}
-                      onClick={onOpenStudentAttendance}
-                    />
-                  )}
-                  {canAccessHomework && (
-                    <DirectoryRow
-                      icon={<FileText className="w-4 h-4 text-blue-600 dark:text-blue-400" />}
-                      label={lang === 'th' ? 'การบ้าน / ตรวจงาน' : 'Homework'}
-                      meta={`${scopedAssignmentsCount} ${lang === 'th' ? 'งาน' : 'tasks'}`}
-                      onClick={() => setActiveTab('homework')}
-                    />
-                  )}
-                  {canOpenLms && (
-                    <DirectoryRow
-                      icon={<BookOpen className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />}
-                      label={lang === 'th' ? 'ห้องเรียน LMS' : 'LMS Classroom'}
-                      meta={`${lessonsCount} ${lang === 'th' ? 'บทเรียน' : 'lessons'}`}
-                      onClick={() => setActiveTab('lms')}
-                    />
-                  )}
+              {(canAccessHomework || canOpenLms || canViewTimetable) && (
+                <div className="space-y-1.5">
+                  <h3 className="px-1 text-xs font-bold text-[var(--color-text-muted)]">
+                    {lang === 'th' ? 'งานสอนและวิชาการ' : 'Academics & Calendar'}
+                  </h3>
+                  <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] divide-y divide-[var(--color-border)] overflow-hidden">
+                    {canAccessHomework && (
+                      <DirectoryRow
+                        icon={<FileText className="w-4 h-4 text-blue-600 dark:text-blue-400" />}
+                        label={lang === 'th' ? 'การบ้าน / ตรวจงาน' : 'Homework'}
+                        meta={`${scopedAssignmentsCount} ${lang === 'th' ? 'งาน' : 'tasks'}`}
+                        onClick={() => setActiveTab('homework')}
+                      />
+                    )}
+                    {canOpenLms && (
+                      <DirectoryRow
+                        icon={<BookOpen className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />}
+                        label={lang === 'th' ? 'ห้องเรียน LMS' : 'LMS Classroom'}
+                        meta={`${lessonsCount} ${lang === 'th' ? 'บทเรียน' : 'lessons'}`}
+                        onClick={() => setActiveTab('lms')}
+                      />
+                    )}
+                    {canViewTimetable && (
+                      <DirectoryRow
+                        icon={<Calendar className="w-4 h-4 text-rose-500 dark:text-rose-400" />}
+                        label={lang === 'th' ? 'ปฏิทินเรียน & วันหยุดราชการ' : 'Calendar & Public Holidays'}
+                        meta=".ics"
+                        onClick={() => {
+                          setMobileTimetableMode('calendar');
+                          setActiveTab('timetable');
+                        }}
+                      />
+                    )}
+                  </div>
                 </div>
-              </div>
+              )}
 
               {(canOpenBehaviorSdq || canOpenInfirmary || canOpenLeave) && (
                 <div className="space-y-1.5">
                   <h3 className="px-1 text-xs font-bold text-[var(--color-text-muted)]">
-                    {lang === 'th' ? 'ดูแลนักเรียน' : 'Student Care'}
+                    {lang === 'th' ? 'ดูแลนักเรียนและคำขอ' : 'Student Care & Leave'}
                   </h3>
                   <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] divide-y divide-[var(--color-border)] overflow-hidden">
+                    {canOpenLeave && (
+                      <DirectoryRow
+                        icon={<FileText className="w-4 h-4 text-amber-600 dark:text-amber-400" />}
+                        label={lang === 'th' ? 'ยื่นใบลา / อนุมัติลา' : 'Leave Requests'}
+                        meta={pendingLeavesCount > 0 ? `${pendingLeavesCount}` : undefined}
+                        onClick={() => setActiveTab('leave')}
+                      />
+                    )}
                     {canOpenBehaviorSdq && (
                       <DirectoryRow
                         icon={<HeartHandshake className="w-4 h-4 text-rose-600 dark:text-rose-400" />}
@@ -567,14 +480,6 @@ export const MobileTeacherParentHome: React.FC<MobileTeacherParentHomeProps> = (
                         label={lang === 'th' ? 'ห้องพยาบาล' : 'Infirmary'}
                         meta={execMetrics.todayInfirmary > 0 ? `${execMetrics.todayInfirmary}` : undefined}
                         onClick={() => setActiveTab('infirmary')}
-                      />
-                    )}
-                    {canOpenLeave && (
-                      <DirectoryRow
-                        icon={<FileText className="w-4 h-4 text-amber-600 dark:text-amber-400" />}
-                        label={lang === 'th' ? 'ยื่นใบลา / อนุมัติลา' : 'Leave Requests'}
-                        meta={pendingLeavesCount > 0 ? `${pendingLeavesCount}` : undefined}
-                        onClick={() => setActiveTab('leave')}
                       />
                     )}
                   </div>
@@ -617,21 +522,22 @@ export const MobileTeacherParentHome: React.FC<MobileTeacherParentHomeProps> = (
           {isParent && (
             <div className="space-y-1.5">
               <h3 className="px-1 text-xs font-bold text-[var(--color-text-muted)]">
-                {lang === 'th' ? 'ติดตามบุตรหลาน' : 'Parent Services'}
+                {lang === 'th' ? 'บริการผู้ปกครอง' : 'Parent Services'}
               </h3>
               <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] divide-y divide-[var(--color-border)] overflow-hidden">
                 <DirectoryRow
                   icon={<Clock className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />}
-                  label={lang === 'th' ? 'ประวัติมาเรียน' : 'Attendance History'}
+                  label={lang === 'th' ? 'ประวัติมาเรียนย้อนหลัง' : 'Attendance History'}
                   meta={todayCheckin ? `${todayCheckin.time.slice(0, 5)} น.` : undefined}
                   onClick={() => setActiveTab('attendance_history')}
                 />
                 {canViewTimetable && (
                   <DirectoryRow
-                    icon={<Calendar className="w-4 h-4 text-sky-600 dark:text-sky-400" />}
-                    label={lang === 'th' ? 'ตารางเรียน' : 'Timetable'}
+                    icon={<Calendar className="w-4 h-4 text-rose-500 dark:text-rose-400" />}
+                    label={lang === 'th' ? 'ปฏิทินเรียน & วันหยุดราชการ' : 'Calendar & Holidays'}
+                    meta=".ics"
                     onClick={() => {
-                      setMobileTimetableMode('day');
+                      setMobileTimetableMode('calendar');
                       setActiveTab('timetable');
                     }}
                   />
@@ -644,77 +550,11 @@ export const MobileTeacherParentHome: React.FC<MobileTeacherParentHomeProps> = (
                     onClick={() => setActiveTab('leave')}
                   />
                 )}
-                <DirectoryRow
-                  icon={<CreditCard className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />}
-                  label={
-                    canViewDigitalId
-                      ? lang === 'th'
-                        ? 'บัตรดิจิทัล & ตั้งค่าบัญชี'
-                        : 'Digital ID & Settings'
-                      : lang === 'th'
-                        ? 'ตั้งค่าบัญชี'
-                        : 'Account Settings'
-                  }
-                  onClick={() => setActiveTab('profile')}
-                />
               </div>
             </div>
           )}
         </div>
       )}
-
-      {/* 5. TAB PANEL: ANNOUNCEMENTS / CALENDAR / ACCOUNT */}
-      {homeTab === 'more' && (
-        <div
-          role="tabpanel"
-          className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] divide-y divide-[var(--color-border)] overflow-hidden animate-in fade-in duration-150"
-        >
-          {canOpenAnnouncements && (
-            <DirectoryRow
-              icon={<Megaphone className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />}
-              label={lang === 'th' ? 'ประกาศจากโรงเรียน' : 'School Announcements'}
-              meta={`${scopedAnnouncementsCount}`}
-              onClick={() => setActiveTab('announcements')}
-            />
-          )}
-
-          {canViewTimetable && (
-            <DirectoryRow
-              icon={<Calendar className="w-4 h-4 text-rose-500 dark:text-rose-400" />}
-              label={lang === 'th' ? 'ปฏิทินเรียน & วันหยุดราชการ' : 'Calendar & Public Holidays'}
-              meta=".ics"
-              onClick={() => {
-                setMobileTimetableMode('calendar');
-                setActiveTab('timetable');
-              }}
-            />
-          )}
-
-          {canOpenLeave && (
-            <DirectoryRow
-              icon={<FileText className="w-4 h-4 text-amber-600 dark:text-amber-400" />}
-              label={lang === 'th' ? 'ยื่นใบลาออนไลน์' : 'Leave Requests'}
-              meta={pendingLeavesCount > 0 ? `${pendingLeavesCount}` : undefined}
-              onClick={() => setActiveTab('leave')}
-            />
-          )}
-
-          <DirectoryRow
-            icon={<CreditCard className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />}
-            label={
-              canViewDigitalId
-                ? lang === 'th'
-                  ? 'บัตรดิจิทัล & ตั้งค่าบัญชี'
-                  : 'Digital ID & Settings'
-                : lang === 'th'
-                  ? 'ตั้งค่าบัญชี'
-                  : 'Account Settings'
-            }
-            onClick={() => setActiveTab('profile')}
-          />
-        </div>
-      )}
     </div>
   );
 };
-

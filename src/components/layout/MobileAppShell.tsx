@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { X } from 'lucide-react';
 import type { PlayerScore, TimetableSlot } from '../../types';
 import { getLocalDateString } from '../../lib/date';
 import { DEFAULT_SCHOOL_PERIODS } from '../../lib/schoolPeriods';
@@ -13,7 +12,6 @@ import {
   recordTeacherPeriodCheck,
 } from '../../lib/teacherPeriodCheckinStore';
 import { playNotificationChime } from '../../lib/pushNotifications';
-import { getMobileTabForNavTab } from '../../lib/mobileNavigation';
 import {
   readSavedNavState,
   syncUrlNavParams,
@@ -43,13 +41,14 @@ import {
 import { exitLandscapeGameMode } from '../../lib/screenOrientation';
 import { GoogleCalendarSyncModal } from '../GoogleCalendarSyncModal';
 import { TimetablePeriodAttendanceModal } from '../modals/TimetablePeriodAttendanceModal';
+import type { CorrectionPrefillSeed } from '../attendance/AttendanceCorrectionHub';
 import { MobileAttendanceView } from '../../views/MobileAttendanceView';
 import type { EduGameSubTab } from '../../views/EduBattleGameView';
 import { StudentMobileHome } from '../student/StudentMobileHome';
 import { ViewErrorBoundary } from '../common/ViewErrorBoundary';
 import { MobileAdminQuickHub, MobileSuperAdminHub } from './MobileRoleWorkspace';
 import { AdminDailyDashboardView } from '../../views/AdminDailyDashboardView';
-import { Sidebar, type NavTab } from './Sidebar';
+import type { NavTab } from './Sidebar';
 import {
   MOBILE_TONE_TARGET,
   MobileAnnouncementsTab,
@@ -82,7 +81,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
   currentUser,
   activeSchool,
   currentRole,
-  isSuperAdminSchoolView = false,
+  isSuperAdminSchoolView: _isSuperAdminSchoolView = false,
   lang,
   setLang,
   themePalette,
@@ -136,7 +135,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
   onAddGrade,
   schools = [],
   coordinationUnreadCount = 0,
-  unclaimedCentralPacksCount = 0,
+  unclaimedCentralPacksCount: _unclaimedCentralPacksCount = 0,
   onOpenSchoolSwitcher,
   onUpdateSchool,
   onAddAnnouncement,
@@ -180,7 +179,6 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
     }
     return readSavedNavState(currentUser?.id)?.mobileTab || initialMobileTab;
   });
-  const [showModuleDrawer, setShowModuleDrawer] = useState(false);
   const [activeGameView, setActiveGameView] = useState<ActiveGameView>('hub');
   const [arcadeInitialSubTab, setArcadeInitialSubTab] = useState<EduGameSubTab>('hub');
   const [profilePage, setProfilePage] = useState(0);
@@ -236,8 +234,13 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
 
   // Dynamic Check-in deep-link state
   const [mobileAttendanceInitialSubTab, setMobileAttendanceInitialSubTab] = useState<
-    'selfie_mobile' | 'nfc_tap' | 'leave_request' | 'teacher_proxy' | 'period_checkin'
+    'selfie_mobile' | 'nfc_tap' | 'leave_request' | 'teacher_proxy' | 'period_checkin' | 'corrections'
   >(initialAttendanceSubTab);
+  const [mobileCorrectionPrefill, setMobileCorrectionPrefill] =
+    useState<CorrectionPrefillSeed | null>(null);
+  const [mobileLeavePrefillDate, setMobileLeavePrefillDate] = useState<string | undefined>(
+    undefined
+  );
   const [mobilePeriodCourseId, setMobilePeriodCourseId] = useState<string | undefined>(initialPeriodCourseId);
   const [mobilePeriodNumber, setMobilePeriodNumber] = useState<number | undefined>(initialPeriodNumber);
   const [mobilePeriodDate, setMobilePeriodDate] = useState<string | undefined>(initialPeriodDate);
@@ -907,6 +910,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
               <MobileAttendanceView
                 embeddedMobile
                 initialSubTab={activeTab === 'student_attendance' ? 'teacher_proxy' : mobileAttendanceInitialSubTab}
+                initialCorrectionPrefill={mobileCorrectionPrefill}
                 showAttendanceAudienceSwitch={['teacher', 'admin', 'super_admin'].includes(currentRole)}
                 filterTabsByAudience
                 onAttendanceAudienceChange={(audience) => {
@@ -955,6 +959,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
               <MobileAttendanceView
                 embeddedMobile
                 initialSubTab="leave_request"
+                initialLeaveDate={mobileLeavePrefillDate}
                 students={students}
                 teachers={isRestrictedViewer ? [] : teachers}
                 courses={scopedCourses}
@@ -1192,6 +1197,26 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
               scopedPeriodAttendance={scopedPeriodAttendance}
               courses={scopedCourses}
               onBackHome={() => setActiveTab('home')}
+              onOpenCorrectionFromHistory={
+                canSelfCheckin && currentRole !== 'parent'
+                  ? (prefill) => {
+                      setMobileCorrectionPrefill({
+                        ...prefill,
+                        requesterId: ownStudent?.id || matchedTeacher?.id || currentUser?.id,
+                      });
+                      setMobileAttendanceInitialSubTab('corrections');
+                      setActiveTab('checkin');
+                    }
+                  : undefined
+              }
+              onOpenLeaveFromHistory={
+                canOpenLeave
+                  ? (date) => {
+                      setMobileLeavePrefillDate(date);
+                      setActiveTab('leave');
+                    }
+                  : undefined
+              }
             />
           )}
 
@@ -1258,73 +1283,13 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
         pendingLeavesCount={pendingLeavesCount}
         onResetCheckinToSelfie={() => {
           setMobileAttendanceInitialSubTab('selfie_mobile');
+          setMobileCorrectionPrefill(null);
           setMobilePeriodCourseId(undefined);
           setMobilePeriodNumber(undefined);
           setMobilePeriodDate(undefined);
           setMobilePeriodCheckType(undefined);
         }}
-        onOpenAllModules={onJumpToDesktopTab ? () => setShowModuleDrawer(true) : undefined}
-        allModulesActive={showModuleDrawer}
       />
-
-      {showModuleDrawer && onJumpToDesktopTab && (
-        <div className="fixed inset-0 z-[60] bg-slate-950/55">
-          <button
-            type="button"
-            className="absolute inset-0 h-full w-full cursor-default"
-            aria-label={lang === 'th' ? 'ปิดเมนูทุกฟังก์ชัน' : 'Close all modules'}
-            onClick={() => setShowModuleDrawer(false)}
-          />
-          <section
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="mobile-module-drawer-title"
-            className="absolute inset-y-0 left-0 flex w-[min(20rem,90vw)] flex-col border-r border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)] shadow-2xl"
-          >
-            <header className="flex h-14 shrink-0 items-center justify-between border-b border-[var(--color-border)] px-4">
-              <h2
-                id="mobile-module-drawer-title"
-                className="truncate text-sm font-bold text-[var(--color-text-title)]"
-              >
-                {lang === 'th' ? 'ทุกฟังก์ชัน' : 'All modules'}
-              </h2>
-              <button
-                type="button"
-                onClick={() => setShowModuleDrawer(false)}
-                aria-label={lang === 'th' ? 'ปิดเมนู' : 'Close menu'}
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-[var(--color-text-muted)] hover:bg-[var(--color-card-subtle)]"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </header>
-            <div className="min-h-0 flex-1 overflow-y-auto">
-              <Sidebar
-                currentTab={MOBILE_TONE_TARGET[activeTab]}
-                setCurrentTab={(tab) => {
-                  setShowModuleDrawer(false);
-                  const mobileTab = getMobileTabForNavTab(tab, currentRole);
-                  if (mobileTab) {
-                    setActiveTab(mobileTab);
-                  } else {
-                    onJumpToDesktopTab(tab);
-                  }
-                }}
-                currentRole={currentRole}
-                isSuperAdminSchoolView={isSuperAdminSchoolView}
-                studentsCount={students.length}
-                teachersCount={teachers.length}
-                coursesCount={courses.length}
-                coordinationUnreadCount={coordinationUnreadCount}
-                unclaimedCentralPacksCount={unclaimedCentralPacksCount}
-                featureFlags={featureFlags}
-                schoolPermissions={schoolPermissions}
-                lang={lang}
-                showAllModulesByDefault
-              />
-            </div>
-          </section>
-        </div>
-      )}
 
       {/* IMMERSIVE FULLSCREEN GAME TAKEOVER */}
       {activeGameView !== 'hub' && (

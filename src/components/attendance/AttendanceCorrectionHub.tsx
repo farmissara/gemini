@@ -133,10 +133,12 @@ export const AttendanceCorrectionHub: React.FC<AttendanceCorrectionHubProps> = (
 
   // Request Form State
   const [showRequestForm, setShowRequestForm] = useState<boolean>(Boolean(prefillSeed));
+  const selfTeacherTargetId = ownTeacher?.id || currentUser?.id || '';
   const [targetRequesterId, setTargetRequesterId] = useState<string>(() => {
     if (prefillSeed?.requesterId) return prefillSeed.requesterId;
     if (ownStudent) return ownStudent.id;
-    return students[0]?.id || ownTeacher?.id || currentUser?.id || '';
+    if (isTeacher && selfTeacherTargetId) return selfTeacherTargetId;
+    return students[0]?.id || selfTeacherTargetId || '';
   });
   const [targetScope, setTargetScope] = useState<AttendanceCorrectionRequest['targetScope']>(
     prefillSeed?.targetScope || 'gate_checkin'
@@ -248,8 +250,12 @@ export const AttendanceCorrectionHub: React.FC<AttendanceCorrectionHubProps> = (
 
   const resolvedRequesterStudent = useMemo(() => {
     if (!isStaff) return ownStudent;
-    return students.find((s) => s.id === targetRequesterId) || ownStudent || students[0];
-  }, [isStaff, ownStudent, students, targetRequesterId]);
+    const teacherIds = new Set([ownTeacher?.id, currentUser?.id].filter(Boolean) as string[]);
+    if (targetRequesterId && teacherIds.has(targetRequesterId)) {
+      return undefined;
+    }
+    return students.find((s) => s.id === targetRequesterId) || ownStudent || (targetRequesterId ? undefined : students[0]);
+  }, [isStaff, ownStudent, ownTeacher?.id, currentUser?.id, students, targetRequesterId]);
 
   const homeroomApprover = useMemo(
     () => resolveStudentHomeroomTeacher(resolvedRequesterStudent, teachers),
@@ -271,7 +277,7 @@ export const AttendanceCorrectionHub: React.FC<AttendanceCorrectionHubProps> = (
     const requesterName =
       isStudentRequester && resolvedRequesterStudent
         ? `${resolvedRequesterStudent.firstNameTh} ${resolvedRequesterStudent.lastNameTh}`
-        : currentUser?.fullNameTh || currentUser?.fullNameEn || 'ผู้ใช้งาน';
+        : ownTeacher?.fullNameTh || currentUser?.fullNameTh || currentUser?.fullNameEn || 'ผู้ใช้งาน';
     const requesterRole: 'student' | 'teacher' =
       isStudentRequester && resolvedRequesterStudent ? 'student' : 'teacher';
     const selectedCourseObj = courses.find((c) => c.id === reqCourseId);
@@ -308,11 +314,13 @@ export const AttendanceCorrectionHub: React.FC<AttendanceCorrectionHubProps> = (
           ? reqPeriodNum
           : undefined,
       reason: reqReason.trim(),
-      homeroomTeacherId: homeroomApprover?.id,
+      homeroomTeacherId: requesterRole === 'student' ? homeroomApprover?.id : undefined,
       homeroomTeacherName:
-        homeroomApprover?.fullNameTh ||
-        resolvedRequesterStudent?.advisorName ||
-        'ครูประจำชั้น / หัวหน้าสายชั้น',
+        requesterRole === 'teacher'
+          ? 'หัวหน้ากลุ่มสาระฯ / ฝ่ายบุคคล'
+          : homeroomApprover?.fullNameTh ||
+            resolvedRequesterStudent?.advisorName ||
+            'ครูประจำชั้น / หัวหน้าสายชั้น',
     });
 
     setRequests((prev) => [created, ...prev]);
@@ -599,7 +607,7 @@ export const AttendanceCorrectionHub: React.FC<AttendanceCorrectionHubProps> = (
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 text-xs">
-                {isStaff && students.length > 0 && (
+                {isStaff && (
                   <div>
                     <label className="type-meta font-semibold">ยื่นคำขอสำหรับ</label>
                     <select
@@ -607,16 +615,16 @@ export const AttendanceCorrectionHub: React.FC<AttendanceCorrectionHubProps> = (
                       onChange={(e) => setTargetRequesterId(e.target.value)}
                       className="w-full mt-1 px-2.5 py-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-title)]"
                     >
+                      {(ownTeacher || currentUser) && (
+                        <option value={ownTeacher?.id || currentUser?.id || ''}>
+                          บัญชีฉัน · {ownTeacher?.fullNameTh || currentUser?.fullNameTh || 'ครู/บุคลากร'}
+                        </option>
+                      )}
                       {students.map((st) => (
                         <option key={st.id} value={st.id}>
                           {st.studentIdNumber} · {st.firstNameTh} {st.lastNameTh} ({st.room})
                         </option>
                       ))}
-                      {ownTeacher && (
-                        <option value={ownTeacher.id}>
-                          บัญชีฉัน · {ownTeacher.fullNameTh} (ครู)
-                        </option>
-                      )}
                     </select>
                   </div>
                 )}

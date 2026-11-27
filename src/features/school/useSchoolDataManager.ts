@@ -2264,6 +2264,7 @@ export function useSchoolDataManager({
       remarks,
       recordType: extra?.recordType || 'check_in',
       userName: personName,
+      photoUrl: extra?.photoStoragePath || undefined,
     };
     void saveQueuedAttendanceToDb(queuedRecord).catch((error: unknown) => {
       enqueueOfflineAction({

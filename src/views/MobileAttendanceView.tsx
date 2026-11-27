@@ -51,7 +51,12 @@ import type {
   TimetableSlot,
   UserRole,
 } from '../types';
-import { saveStudentSelfAttendance } from '../lib/supabase';
+import { saveStudentSelfAttendance, uploadAttendanceSelfiePhoto } from '../lib/supabase';
+import {
+  buildPersonalDailyAttendanceRows,
+  type PersonalDailyAttendanceRow,
+} from '../lib/personalAttendanceHistory';
+import { parseTimeToMinutes } from '../lib/attendanceCorrections';
 import { sendEduVerseNotification } from '../lib/pushNotifications';
 import { getModuleTone } from '../lib/moduleTheme';
 import { ModuleTourTrigger } from '../components/guide/GuideTourContext';
@@ -158,6 +163,8 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
   onAddLeaveRequest,
   onUpdateLeaveStatus,
   initialSubTab = 'selfie_mobile',
+  initialCorrectionPrefill = null,
+  initialLeaveDate,
   embeddedMobile = false,
   initialPeriodCourseId,
   initialPeriodNumber,
@@ -206,7 +213,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
   const [subTab, setSubTab] = useState<AttendanceSubTab>(safeInitialSubTab);
   const isStudentAttendanceSubTab = (
     tab: AttendanceSubTab
-  ): boolean => ['teacher_proxy', 'period_checkin', 'daily_report', 'corrections'].includes(tab);
+  ): boolean => ['teacher_proxy', 'period_checkin', 'daily_report'].includes(tab);
   const activeAttendanceAudience = isStudentAttendanceSubTab(subTab) ? 'students' : 'staff';
   const isSimpleStaffCheckin =
     showAttendanceAudienceSwitch &&
@@ -659,7 +666,22 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
   const [periodCustomTimes, setPeriodCustomTimes] = useState<
     Record<string, { checkIn?: string; checkOut?: string; reason?: string }>
   >({});
-  const [correctionPrefill, setCorrectionPrefill] = useState<CorrectionPrefillSeed | null>(null);
+  const [correctionPrefill, setCorrectionPrefill] = useState<CorrectionPrefillSeed | null>(
+    initialCorrectionPrefill
+  );
+
+  useEffect(() => {
+    if (initialCorrectionPrefill) {
+      setCorrectionPrefill(initialCorrectionPrefill);
+    }
+  }, [initialCorrectionPrefill]);
+
+  useEffect(() => {
+    if (initialLeaveDate) {
+      setLeaveStartDate(initialLeaveDate);
+      setLeaveEndDate(initialLeaveDate);
+    }
+  }, [initialLeaveDate]);
 
   const pendingCorrectionCount = useMemo(() => {
     const all = loadAttendanceCorrections(activeSchoolId);
@@ -1071,33 +1093,77 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
     : effectiveUserType === 'teacher'
       ? selectedTeacher?.id
       : selectedStudent?.id;
+  const activeTargetMatchIds = useMemo(() => {
+    const ids = new Set<string>();
+    if (activeTargetId) ids.add(activeTargetId);
+    if (isSelfCheckin) {
+      if (currentUser?.id) ids.add(currentUser.id);
+      if (currentUser?.studentRecordId) ids.add(currentUser.studentRecordId);
+      if (ownStudent?.id) ids.add(ownStudent.id);
+      if (ownTeacher?.id) ids.add(ownTeacher.id);
+    } else if (effectiveUserType === 'teacher' && selectedTeacher?.id) {
+      ids.add(selectedTeacher.id);
+    } else if (effectiveUserType === 'student' && selectedStudent?.id) {
+      ids.add(selectedStudent.id);
+    }
+    return ids;
+  }, [
+    activeTargetId,
+    isSelfCheckin,
+    currentUser?.id,
+    currentUser?.studentRecordId,
+    ownStudent?.id,
+    ownTeacher?.id,
+    effectiveUserType,
+    selectedTeacher?.id,
+    selectedStudent?.id,
+  ]);
   const todayDateStr = getLocalDateString();
   const activeTodayCheckIn = useMemo(() => {
-    if (!activeTargetId) return undefined;
-    return attendance.find(
-      (a) =>
-        a.date === todayDateStr &&
-        (a.recordType || 'check_in') === 'check_in' &&
-        (a.studentId === activeTargetId || a.teacherId === activeTargetId)
-    );
-  }, [attendance, activeTargetId, todayDateStr]);
+    if (activeTargetMatchIds.size === 0) return undefined;
+    return attendance
+      .filter(
+        (a) =>
+          a.date === todayDateStr &&
+          (a.recordType || 'check_in') !== 'check_out' &&
+          (activeTargetMatchIds.has(a.studentId) ||
+            (a.teacherId ? activeTargetMatchIds.has(a.teacherId) : false))
+      )
+      .sort((a, b) => (parseTimeToMinutes(b.time) ?? -1) - (parseTimeToMinutes(a.time) ?? -1))[0];
+  }, [attendance, activeTargetMatchIds, todayDateStr]);
   const activeTodayCheckOut = useMemo(() => {
-    if (!activeTargetId) return undefined;
-    return attendance.find(
-      (a) =>
-        a.date === todayDateStr &&
-        a.recordType === 'check_out' &&
-        (a.studentId === activeTargetId || a.teacherId === activeTargetId)
-    );
-  }, [attendance, activeTargetId, todayDateStr]);
+    if (activeTargetMatchIds.size === 0) return undefined;
+    return attendance
+      .filter(
+        (a) =>
+          a.date === todayDateStr &&
+          a.recordType === 'check_out' &&
+          (activeTargetMatchIds.has(a.studentId) ||
+            (a.teacherId ? activeTargetMatchIds.has(a.teacherId) : false))
+      )
+      .sort((a, b) => (parseTimeToMinutes(b.time) ?? -1) - (parseTimeToMinutes(a.time) ?? -1))[0];
+  }, [attendance, activeTargetMatchIds, todayDateStr]);
+
+  const personalAttendanceRows = useMemo<PersonalDailyAttendanceRow[]>(() => {
+    const correctionList = loadAttendanceCorrections(activeSchoolId);
+    return buildPersonalDailyAttendanceRows({
+      targetIds: activeTargetMatchIds,
+      attendance,
+      leaveRequests,
+      correctionRequests: correctionList,
+      schoolId: activeSchoolId,
+      todayDateStr,
+      daysLookback: 21,
+    });
+  }, [activeTargetMatchIds, attendance, leaveRequests, activeSchoolId, todayDateStr, subTab]);
 
   useEffect(() => {
-    if (activeTodayCheckIn && !activeTodayCheckOut) {
+    if (activeTodayCheckIn && !activeTodayCheckOut && !activeTodayCheckIn.checkOutTime) {
       setCheckType('check_out');
     } else if (!activeTodayCheckIn) {
       setCheckType('check_in');
     }
-  }, [activeTargetId, activeTodayCheckIn?.id, activeTodayCheckOut?.id]);
+  }, [activeTargetId, activeTodayCheckIn?.id, activeTodayCheckOut?.id, activeTodayCheckIn?.checkOutTime]);
 
   const hasSchoolGpsConfigured = Boolean(selectedGate);
   const isInGeofence = Boolean(
@@ -1582,6 +1648,13 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
         return false;
       }
       setIsSavingAttendance(false);
+    } else if (currentUser?.id && photoToSave.startsWith('data:image/') && _school?.id) {
+      photoStoragePath = await uploadAttendanceSelfiePhoto({
+        schoolId: _school.id,
+        userId: currentUser.id,
+        recordId,
+        photoDataUrl: photoToSave,
+      });
     }
 
     onRecordAttendance(targetId, status, remarks, 'selfie_geofence', {
@@ -3067,125 +3140,105 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
             </div>
           )}
 
-          <div className="flex items-center justify-between gap-1.5">
-            <nav
-              data-guide-id="mobile-checkin-tabs"
-              aria-label="Attendance sub-navigation"
-              className="flex-1 min-w-0 flex items-center gap-1 p-0.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] overflow-x-auto no-scrollbar"
-            >
-              {[
-                { id: 'selfie_mobile', icon: Camera, labelTh: 'เซลฟี่ รร.', labelEn: 'Selfie', staffOnly: false },
-                { id: 'nfc_tap', icon: Nfc, labelTh: 'NFC รร.', labelEn: 'NFC', staffOnly: false },
-                {
-                  id: 'leave_request',
-                  icon: FileText,
-                  labelTh: 'ใบลา',
-                  labelEn: 'Leave',
-                  badge: scopedLeaveRequests.filter((r) => r.status === 'pending').length,
-                  staffOnly: false,
-                },
-                { id: 'teacher_proxy', icon: UserCheck, labelTh: 'เข้า/ออก รร.', labelEn: 'School Proxy', staffOnly: true },
-                { id: 'daily_report', icon: ClipboardCheck, labelTh: 'รายงาน', labelEn: 'Daily', staffOnly: true },
-                { id: 'period_checkin', icon: Users, labelTh: 'เข้า/ออกคาบ', labelEn: 'Periods', staffOnly: false },
-                {
-                  id: 'corrections',
-                  icon: FileEdit,
-                  labelTh: 'แก้เวลา',
-                  labelEn: 'Adjust',
-                  badge: pendingCorrectionCount,
-                  staffOnly: false,
-                },
-              ]
-                .filter((tab) => {
-                  if (
-                    filterTabsByAudience &&
-                    showAttendanceAudienceSwitch &&
-                    isStaffUser &&
-                    !(
-                      activeAttendanceAudience === 'students'
-                        ? ['teacher_proxy', 'daily_report', 'period_checkin', 'corrections'].includes(tab.id)
-                        : ['selfie_mobile', 'nfc_tap', 'leave_request'].includes(tab.id)
-                    )
-                  ) {
-                    return false;
-                  }
-                  if (hideStaffOverviewTabs && isStaffUser && (tab.id === 'daily_report' || tab.id === 'corrections')) {
-                    return false;
-                  }
-                  return tab.id === 'daily_report'
-                    ? canViewDailyReport
-                    : isStaffUser || !tab.staffOnly;
-                })
-                .map((tab) => {
-                  const isActive = subTab === tab.id;
-                  return (
-                    <button
-                      key={tab.id}
-                      type="button"
-                      data-active={isActive}
-                      onClick={() => {
-                        setSubTab(tab.id as AttendanceSubTab);
-                        if (tab.id === 'leave_request') setLeaveFormStep(1);
-                      }}
-                      className={`inline-flex items-center justify-center gap-1 h-7 px-2.5 rounded-md text-[11px] whitespace-nowrap shrink-0 cursor-pointer transition active:scale-[0.97] ${
-                        isActive
-                          ? 'bg-[var(--color-card)] text-[var(--color-primary-text)] font-bold border border-[var(--color-border)] shadow-2xs'
-                          : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] font-medium border border-transparent'
-                      }`}
-                    >
-                      <tab.icon className="w-3 h-3 shrink-0" />
-                      <span>{lang === 'th' ? tab.labelTh : tab.labelEn}</span>
-                      {tab.badge ? (
-                        <span
-                          className={`text-[10px] font-bold tabular-nums ${
-                            isActive ? 'text-[var(--color-primary-text)]' : 'text-amber-600 dark:text-amber-300'
-                          }`}
-                        >
-                          ({tab.badge})
-                        </span>
-                      ) : null}
-                    </button>
-                  );
-                })}
-            </nav>
-
-            {!(showAttendanceAudienceSwitch && onAttendanceAudienceChange) && (
-              <button
-                type="button"
-                onClick={() => setSoundEnabled(!soundEnabled)}
-                className="h-8 w-8 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] flex items-center justify-center shrink-0 cursor-pointer transition active:scale-95 shadow-2xs"
-                title={soundEnabled ? 'ปิดเสียงแจ้งเตือน' : 'เปิดเสียงแจ้งเตือน'}
-                aria-label={soundEnabled ? 'ปิดเสียงแจ้งเตือน' : 'เปิดเสียงแจ้งเตือน'}
+          {initialSubTab !== 'leave_request' && (
+            <div className="flex items-center justify-between gap-1.5">
+              <nav
+                data-guide-id="mobile-checkin-tabs"
+                aria-label="Attendance sub-navigation"
+                className="flex-1 min-w-0 flex items-center gap-1 p-0.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] overflow-x-auto no-scrollbar"
               >
-                {soundEnabled ? (
-                  <Volume2 className="w-3.5 h-3.5 text-[var(--tone)]" />
-                ) : (
-                  <VolumeX className="w-3.5 h-3.5 text-[var(--color-text-muted)]" />
-                )}
-              </button>
-            )}
-          </div>
+                {[
+                  { id: 'selfie_mobile', icon: Camera, labelTh: 'ลงเวลา', labelEn: 'Clock', staffOnly: false },
+                  { id: 'nfc_tap', icon: Nfc, labelTh: 'NFC', labelEn: 'NFC', staffOnly: false },
+                  {
+                    id: 'leave_request',
+                    icon: FileText,
+                    labelTh: 'ใบลา',
+                    labelEn: 'Leave',
+                    badge: scopedLeaveRequests.filter((r) => r.status === 'pending').length,
+                    staffOnly: false,
+                  },
+                  { id: 'teacher_proxy', icon: UserCheck, labelTh: 'เข้า/ออก รร.', labelEn: 'School', staffOnly: true },
+                  { id: 'daily_report', icon: ClipboardCheck, labelTh: 'รายงาน', labelEn: 'Daily', staffOnly: true },
+                  { id: 'period_checkin', icon: Users, labelTh: 'เข้า/ออกคาบ', labelEn: 'Periods', staffOnly: false },
+                  {
+                    id: 'corrections',
+                    icon: FileEdit,
+                    labelTh: 'แก้เวลา',
+                    labelEn: 'Adjust',
+                    badge: pendingCorrectionCount,
+                    staffOnly: false,
+                  },
+                ]
+                  .filter((tab) => {
+                    if (
+                      filterTabsByAudience &&
+                      showAttendanceAudienceSwitch &&
+                      isStaffUser &&
+                      !(
+                        activeAttendanceAudience === 'students'
+                          ? ['teacher_proxy', 'period_checkin', 'daily_report', 'corrections'].includes(tab.id)
+                          : ['selfie_mobile', 'nfc_tap', 'leave_request', 'corrections'].includes(tab.id)
+                      )
+                    ) {
+                      return false;
+                    }
+                    if (hideStaffOverviewTabs && isStaffUser && (tab.id === 'daily_report' || tab.id === 'corrections')) {
+                      return false;
+                    }
+                    return tab.id === 'daily_report'
+                      ? canViewDailyReport
+                      : isStaffUser || !tab.staffOnly;
+                  })
+                  .map((tab) => {
+                    const isActive = subTab === tab.id;
+                    return (
+                      <button
+                        key={tab.id}
+                        type="button"
+                        data-active={isActive}
+                        onClick={() => {
+                          setSubTab(tab.id as AttendanceSubTab);
+                          if (tab.id === 'leave_request') setLeaveFormStep(1);
+                        }}
+                        className={`inline-flex items-center justify-center gap-1 h-7 px-2.5 rounded-md text-[11px] whitespace-nowrap shrink-0 cursor-pointer transition active:scale-[0.97] ${
+                          isActive
+                            ? 'bg-[var(--color-card)] text-[var(--color-primary-text)] font-bold border border-[var(--color-border)] shadow-2xs'
+                            : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] font-medium border border-transparent'
+                        }`}
+                      >
+                        <tab.icon className="w-3 h-3 shrink-0" />
+                        <span>{lang === 'th' ? tab.labelTh : tab.labelEn}</span>
+                        {tab.badge ? (
+                          <span
+                            className={`text-[10px] font-bold tabular-nums ${
+                              isActive ? 'text-[var(--color-primary-text)]' : 'text-amber-600 dark:text-amber-300'
+                            }`}
+                          >
+                            ({tab.badge})
+                          </span>
+                        ) : null}
+                      </button>
+                    );
+                  })}
+              </nav>
 
-          {!hideFloatingToolbar && (
-            <AttendanceQuickActionBar
-              lang={lang}
-              direction="down"
-              embeddedMobile
-              isStaffUser={isStaffUser}
-              subTab={subTab}
-              setSubTab={setSubTab}
-              setLeaveFormStep={setLeaveFormStep}
-              fabMenuOpen={fabMenuOpen}
-              setFabMenuOpen={setFabMenuOpen}
-              runWithBiometricGuard={runWithBiometricGuard}
-              setShowRapidScanner={setShowRapidScanner}
-              setShowQuickRosterSheet={setShowQuickRosterSheet}
-              handlePrimaryFabCheckin={handlePrimaryFabCheckin}
-              isSavingAttendance={isSavingAttendance}
-              capturedPhotoUrl={capturedPhotoUrl}
-              matchedProxyStudent={matchedProxyStudent}
-              primaryFabLabel={primaryFabLabel}
-            />
+              {!(showAttendanceAudienceSwitch && onAttendanceAudienceChange) && (
+                <button
+                  type="button"
+                  onClick={() => setSoundEnabled(!soundEnabled)}
+                  className="h-8 w-8 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] flex items-center justify-center shrink-0 cursor-pointer transition active:scale-95 shadow-2xs"
+                  title={soundEnabled ? 'ปิดเสียงแจ้งเตือน' : 'เปิดเสียงแจ้งเตือน'}
+                  aria-label={soundEnabled ? 'ปิดเสียงแจ้งเตือน' : 'เปิดเสียงแจ้งเตือน'}
+                >
+                  {soundEnabled ? (
+                    <Volume2 className="w-3.5 h-3.5 text-[var(--tone)]" />
+                  ) : (
+                    <VolumeX className="w-3.5 h-3.5 text-[var(--color-text-muted)]" />
+                  )}
+                </button>
+              )}
+            </div>
           )}
         </div>
       )}
@@ -3338,6 +3391,35 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
           selfieTimerSeconds={selfieTimerSeconds}
           setSelfieTimerSeconds={setSelfieTimerSeconds}
           selfieCountdown={selfieCountdown}
+          personalAttendanceRows={personalAttendanceRows}
+          onOpenCorrectionFromHistory={(row) => {
+            const targetScope =
+              row.checkInTime && !row.checkOutTime ? 'gate_checkout' : 'gate_checkin';
+            const issueType = !row.checkInTime
+              ? 'forgot_checkin'
+              : !row.checkOutTime
+                ? 'forgot_checkout'
+                : row.statusKey === 'late'
+                  ? 'late_arrival'
+                  : 'time_mismatch';
+            setCorrectionPrefill({
+              targetScope,
+              issueType,
+              date: row.date,
+              originalTime:
+                targetScope === 'gate_checkout'
+                  ? row.checkOutTime || ''
+                  : row.checkInTime || '',
+              requesterId: activeTargetId,
+            });
+            setSubTab('corrections');
+          }}
+          onOpenLeaveFromHistory={(row) => {
+            setLeaveStartDate(row.date);
+            setLeaveEndDate(row.date);
+            setLeaveFormStep(1);
+            setSubTab('leave_request');
+          }}
         />
       )}
 

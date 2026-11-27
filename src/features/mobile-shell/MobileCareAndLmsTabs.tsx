@@ -8,13 +8,18 @@ import {
   CheckCircle2,
   Clock,
   ExternalLink,
+  Eye,
+  FileEdit,
+  FileText,
   HeartHandshake,
   HeartPulse,
+  MoreVertical,
   Plus,
   Send,
   ShieldAlert,
   Thermometer,
   Video,
+  X,
 } from 'lucide-react';
 import type {
   AppLanguage,
@@ -32,8 +37,11 @@ import type {
   Student,
   UserRole,
 } from '../../types';
+import type { CorrectionIssueType, CorrectionTargetScope } from '../../lib/attendanceCorrections';
+import { formatThaiShortDateLabel, resolveRecordPhotoSource } from '../../lib/personalAttendanceHistory';
 import { getLocalDateString } from '../../lib/date';
 import { useSchoolCustomPresets } from '../../lib/schoolCustomPresets';
+import { AttendancePhoto } from '../../components/AttendancePhoto';
 import { PagedList } from '../../components/PagedList';
 import { StatusBadge } from '../../components/common/StatusBadge';
 
@@ -41,12 +49,23 @@ import { StatusBadge } from '../../components/common/StatusBadge';
 /* 1. STUDENT / PARENT ATTENDANCE HISTORY TAB                                 */
 /* -------------------------------------------------------------------------- */
 
+export interface HistoryCorrectionPrefill {
+  targetScope: CorrectionTargetScope;
+  issueType: CorrectionIssueType;
+  date: string;
+  originalTime?: string;
+  courseId?: string;
+  periodNumber?: number;
+}
+
 interface MobileAttendanceHistoryTabProps {
   lang: AppLanguage;
   scopedAttendance: AttendanceRecord[];
   scopedPeriodAttendance: PeriodAttendanceRecord[];
   courses: Course[];
   onBackHome: () => void;
+  onOpenCorrectionFromHistory?: (prefill: HistoryCorrectionPrefill) => void;
+  onOpenLeaveFromHistory?: (date: string) => void;
 }
 
 export const MobileAttendanceHistoryTab: React.FC<MobileAttendanceHistoryTabProps> = ({
@@ -55,9 +74,17 @@ export const MobileAttendanceHistoryTab: React.FC<MobileAttendanceHistoryTabProp
   scopedPeriodAttendance,
   courses,
   onBackHome,
+  onOpenCorrectionFromHistory,
+  onOpenLeaveFromHistory,
 }) => {
   const [mode, setMode] = useState<'daily' | 'period'>('daily');
   const [statusFilter, setStatusFilter] = useState<'all' | 'present' | 'late' | 'absent' | 'leave'>('all');
+  const [actionMenuTarget, setActionMenuTarget] = useState<
+    | { kind: 'daily'; record: AttendanceRecord }
+    | { kind: 'period'; record: PeriodAttendanceRecord; courseName: string }
+    | null
+  >(null);
+  const [photoPreviewRecord, setPhotoPreviewRecord] = useState<AttendanceRecord | null>(null);
 
   const presentCount = scopedAttendance.filter((r) => r.status === 'present').length;
   const lateCount = scopedAttendance.filter((r) => r.status === 'late').length;
@@ -106,7 +133,7 @@ export const MobileAttendanceHistoryTab: React.FC<MobileAttendanceHistoryTabProp
           <span>{lang === 'th' ? 'กลับหน้าหลัก' : 'Back'}</span>
         </button>
         <h2 className="text-sm font-extrabold text-[var(--color-text-title)]">
-          {lang === 'th' ? 'ประวัติการมาเรียนย้อนหลัง' : 'Attendance History'}
+          {lang === 'th' ? 'ประวัติการลงเวลาและมาเรียน' : 'Attendance History'}
         </h2>
       </div>
 
@@ -149,7 +176,7 @@ export const MobileAttendanceHistoryTab: React.FC<MobileAttendanceHistoryTabProp
               : 'text-[var(--color-text-muted)]'
           }`}
         >
-          เช็คชื่อเข้า/ออกโรงเรียน ({scopedAttendance.length})
+          เข้า/ออกโรงเรียน ({scopedAttendance.length})
         </button>
         <button
           type="button"
@@ -160,7 +187,7 @@ export const MobileAttendanceHistoryTab: React.FC<MobileAttendanceHistoryTabProp
               : 'text-[var(--color-text-muted)]'
           }`}
         >
-          เช็คชื่อเข้า/ออกคาบเรียน ({scopedPeriodAttendance.length})
+          เข้า/ออกคาบเรียน ({scopedPeriodAttendance.length})
         </button>
       </div>
 
@@ -198,47 +225,76 @@ export const MobileAttendanceHistoryTab: React.FC<MobileAttendanceHistoryTabProp
           nextLabel="ถัดไป"
           emptyState={
             <div className="p-8 text-center rounded-2xl border border-dashed border-[var(--color-border)] text-xs text-[var(--color-text-muted)]">
-              ไม่มีประวัติการเช็คชื่อรายวันในตัวกรองนี้
+              ไม่มีประวัติการลงเวลารายวันในตัวกรองนี้
             </div>
           }
-          renderItem={(rec) => (
-            <div
-              key={rec.id}
-              className="p-3.5 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] flex items-center justify-between gap-3 text-xs"
-            >
-              <div className="min-w-0 space-y-0.5">
-                <p className="font-bold text-[var(--color-text-title)] tabular-nums">
-                  {rec.date} · {rec.time || '--:--'} น.
-                </p>
-                <p className="text-[11px] text-[var(--color-text-muted)] truncate">
-                  {rec.recordType === 'check_out' ? 'เช็คชื่อออกโรงเรียน' : 'เช็คชื่อเข้าโรงเรียน'} ·{' '}
-                  {methodLabel(rec.checkinMethod)}
-                  {rec.remarks ? ` · ${rec.remarks}` : ''}
-                </p>
+          renderItem={(rec) => {
+            const photoSrc = resolveRecordPhotoSource(rec);
+            return (
+              <div
+                key={rec.id}
+                className="p-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] flex items-center justify-between gap-2.5 text-xs"
+              >
+                <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                  {photoSrc && (
+                    <button
+                      type="button"
+                      onClick={() => setPhotoPreviewRecord(rec)}
+                      className="w-11 h-11 rounded-xl overflow-hidden border border-[var(--color-border)] shrink-0 cursor-pointer relative group"
+                      aria-label={lang === 'th' ? 'ดูรูปถ่ายลงเวลา' : 'View attendance photo'}
+                    >
+                      <AttendancePhoto
+                        src={photoSrc}
+                        alt={rec.userName || rec.date}
+                        className="w-full h-full object-cover"
+                      />
+                    </button>
+                  )}
+                  <div className="min-w-0 space-y-0.5">
+                    <p className="font-bold text-[var(--color-text-title)] tabular-nums">
+                      {formatThaiShortDateLabel(rec.date)} · {rec.time || '--:--'} น.
+                    </p>
+                    <p className="text-[11px] text-[var(--color-text-muted)] truncate">
+                      {rec.recordType === 'check_out' ? 'ออกโรงเรียน' : 'เข้าโรงเรียน'} ·{' '}
+                      {methodLabel(rec.checkinMethod)}
+                      {rec.remarks ? ` · ${rec.remarks}` : ''}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  <StatusBadge
+                    size="xs"
+                    status={
+                      rec.status === 'present'
+                        ? 'complete'
+                        : rec.status === 'late'
+                          ? 'pending'
+                          : rec.status === 'leave'
+                            ? 'info'
+                            : 'delayed'
+                    }
+                    label={
+                      rec.status === 'present'
+                        ? 'ตรงเวลา'
+                        : rec.status === 'late'
+                          ? 'สาย'
+                          : rec.status === 'leave'
+                            ? 'ลา'
+                            : 'ขาด'
+                    }
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setActionMenuTarget({ kind: 'daily', record: rec })}
+                    className="min-h-[44px] min-w-[44px] -mr-1.5 rounded-xl inline-flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] hover:bg-[var(--color-card-subtle)] cursor-pointer transition"
+                    aria-label={lang === 'th' ? 'เมนูจัดการรายการลงเวลา' : 'Attendance row actions'}
+                  >
+                    <MoreVertical className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
-              <StatusBadge
-                size="xs"
-                status={
-                  rec.status === 'present'
-                    ? 'complete'
-                    : rec.status === 'late'
-                      ? 'pending'
-                      : rec.status === 'leave'
-                        ? 'info'
-                        : 'delayed'
-                }
-                label={
-                  rec.status === 'present'
-                    ? 'ตรงเวลา'
-                    : rec.status === 'late'
-                      ? 'สาย'
-                      : rec.status === 'leave'
-                        ? 'ลา'
-                        : 'ขาด'
-                }
-              />
-            </div>
-          )}
+            );
+          }}
         />
       ) : (
         <PagedList
@@ -253,46 +309,252 @@ export const MobileAttendanceHistoryTab: React.FC<MobileAttendanceHistoryTabProp
           }
           renderItem={(rec) => {
             const course = courses.find((c) => c.id === rec.courseId || c.code === rec.courseCode);
+            const courseName = course?.titleTh || rec.courseCode;
             return (
               <div
                 key={rec.id}
-                className="p-3.5 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] flex items-center justify-between gap-3 text-xs"
+                className="p-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] flex items-center justify-between gap-2.5 text-xs"
               >
-                <div className="min-w-0 space-y-0.5">
-                  <p className="font-bold text-[var(--color-text-title)] truncate">
-                    {course?.titleTh || rec.courseCode}
-                  </p>
+                <div className="min-w-0 space-y-0.5 flex-1">
+                  <p className="font-bold text-[var(--color-text-title)] truncate">{courseName}</p>
                   <p className="text-[11px] text-[var(--color-text-muted)] tabular-nums truncate">
-                    {rec.date} · คาบ {rec.periodNumber} ({rec.timeSlot}) ·{' '}
-                    {rec.recordType === 'check_out' ? 'เช็คเอาท์' : 'เช็คอิน'}
+                    {formatThaiShortDateLabel(rec.date)} · คาบ {rec.periodNumber} ({rec.timeSlot}) ·{' '}
+                    {rec.recordType === 'check_out' ? 'ออกคาบ' : 'เข้าคาบ'}
                     {rec.actualCheckInTime ? ` ${rec.actualCheckInTime}` : ''}
                   </p>
                 </div>
-                <StatusBadge
-                  size="xs"
-                  status={
-                    rec.status === 'present'
-                      ? 'complete'
-                      : rec.status === 'late'
-                        ? 'pending'
-                        : rec.status === 'excused'
-                          ? 'info'
-                          : 'delayed'
-                  }
-                  label={
-                    rec.status === 'present'
-                      ? 'เข้าเรียน'
-                      : rec.status === 'late'
-                        ? 'สาย'
-                        : rec.status === 'excused'
-                          ? 'ลา'
-                          : 'ขาด'
-                  }
-                />
+                <div className="flex items-center gap-1 shrink-0">
+                  <StatusBadge
+                    size="xs"
+                    status={
+                      rec.status === 'present'
+                        ? 'complete'
+                        : rec.status === 'late'
+                          ? 'pending'
+                          : rec.status === 'excused'
+                            ? 'info'
+                            : 'delayed'
+                    }
+                    label={
+                      rec.status === 'present'
+                        ? 'เข้าเรียน'
+                        : rec.status === 'late'
+                          ? 'สาย'
+                          : rec.status === 'excused'
+                            ? 'ลา'
+                            : 'ขาด'
+                    }
+                  />
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setActionMenuTarget({ kind: 'period', record: rec, courseName })
+                    }
+                    className="min-h-[44px] min-w-[44px] -mr-1.5 rounded-xl inline-flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] hover:bg-[var(--color-card-subtle)] cursor-pointer transition"
+                    aria-label={lang === 'th' ? 'เมนูจัดการรายการคาบเรียน' : 'Period row actions'}
+                  >
+                    <MoreVertical className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
             );
           }}
         />
+      )}
+
+      {/* Row Action Sheet (⋮) */}
+      {actionMenuTarget && (
+        <div
+          className="fixed inset-0 z-50 bg-black/55 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-150"
+          onClick={() => setActionMenuTarget(null)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            className="w-full max-w-md rounded-t-3xl sm:rounded-3xl bg-[var(--color-card)] border border-[var(--color-border)] p-4 pb-6 space-y-2 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between gap-2 pb-2 border-b border-[var(--color-border)]">
+              <div className="min-w-0">
+                <p className="text-sm font-extrabold text-[var(--color-text-title)] truncate">
+                  {actionMenuTarget.kind === 'daily'
+                    ? `${formatThaiShortDateLabel(actionMenuTarget.record.date)} · ${actionMenuTarget.record.time || '--:--'} น.`
+                    : `${actionMenuTarget.courseName} · คาบ ${actionMenuTarget.record.periodNumber}`}
+                </p>
+                <p className="text-[11px] text-[var(--color-text-muted)] truncate">
+                  {actionMenuTarget.kind === 'daily'
+                    ? actionMenuTarget.record.recordType === 'check_out'
+                      ? 'เช็คชื่อออกโรงเรียน'
+                      : 'เช็คชื่อเข้าโรงเรียน'
+                    : `${formatThaiShortDateLabel(actionMenuTarget.record.date)} (${actionMenuTarget.record.timeSlot})`}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActionMenuTarget(null)}
+                className="min-h-[40px] min-w-[40px] rounded-xl flex items-center justify-center text-[var(--color-text-muted)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
+                aria-label={lang === 'th' ? 'ปิดเมนู' : 'Close'}
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {onOpenCorrectionFromHistory && (
+              <button
+                type="button"
+                onClick={() => {
+                  const target = actionMenuTarget;
+                  setActionMenuTarget(null);
+                  if (target.kind === 'daily') {
+                    const rec = target.record;
+                    const targetScope =
+                      rec.recordType === 'check_out' ? 'gate_checkout' : 'gate_checkin';
+                    const issueType =
+                      rec.status === 'late'
+                        ? 'late_arrival'
+                        : rec.status === 'absent'
+                          ? 'absent_marked'
+                          : 'time_mismatch';
+                    onOpenCorrectionFromHistory({
+                      targetScope,
+                      issueType,
+                      date: rec.date,
+                      originalTime: rec.time,
+                    });
+                  } else {
+                    const rec = target.record;
+                    const targetScope =
+                      rec.recordType === 'check_out' ? 'period_checkout' : 'period_checkin';
+                    const issueType =
+                      rec.status === 'late'
+                        ? 'late_arrival'
+                        : rec.status === 'absent'
+                          ? 'absent_marked'
+                          : 'time_mismatch';
+                    onOpenCorrectionFromHistory({
+                      targetScope,
+                      issueType,
+                      date: rec.date,
+                      originalTime: rec.actualCheckInTime,
+                      courseId: rec.courseId,
+                      periodNumber: rec.periodNumber,
+                    });
+                  }
+                }}
+                className="w-full min-h-[48px] px-3.5 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] flex items-center gap-3 text-left cursor-pointer transition"
+              >
+                <FileEdit className="w-4 h-4 text-[var(--color-primary-text)] shrink-0" />
+                <div>
+                  <p className="text-xs font-bold text-[var(--color-text-title)]">
+                    {lang === 'th' ? 'ขอแก้เวลา / ยืนยันเวลา' : 'Request time correction'}
+                  </p>
+                  <p className="text-[11px] text-[var(--color-text-muted)]">
+                    {lang === 'th'
+                      ? 'แก้เวลาเข้า-ออก มาสาย หรือกรณีลืมสแกน'
+                      : 'Fix late arrival or missing check-in/out'}
+                  </p>
+                </div>
+              </button>
+            )}
+
+            {onOpenLeaveFromHistory && (
+              <button
+                type="button"
+                onClick={() => {
+                  const date = actionMenuTarget.record.date;
+                  setActionMenuTarget(null);
+                  onOpenLeaveFromHistory(date);
+                }}
+                className="w-full min-h-[48px] px-3.5 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] flex items-center gap-3 text-left cursor-pointer transition"
+              >
+                <FileText className="w-4 h-4 text-sky-600 dark:text-sky-400 shrink-0" />
+                <div>
+                  <p className="text-xs font-bold text-[var(--color-text-title)]">
+                    {lang === 'th' ? 'ยื่นใบลาสำหรับวันนี้' : 'Submit leave request'}
+                  </p>
+                  <p className="text-[11px] text-[var(--color-text-muted)]">
+                    {lang === 'th'
+                      ? 'ลาป่วย ลากิจ ลาไปราชการ พร้อมแนบหลักฐาน'
+                      : 'Sick, personal, or official duty leave'}
+                  </p>
+                </div>
+              </button>
+            )}
+
+            {actionMenuTarget.kind === 'daily' &&
+              Boolean(resolveRecordPhotoSource(actionMenuTarget.record)) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const rec = actionMenuTarget.record;
+                    setActionMenuTarget(null);
+                    setPhotoPreviewRecord(rec);
+                  }}
+                  className="w-full min-h-[48px] px-3.5 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] flex items-center gap-3 text-left cursor-pointer transition"
+                >
+                  <Eye className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                  <div>
+                    <p className="text-xs font-bold text-[var(--color-text-title)]">
+                      {lang === 'th' ? 'ดูรูปถ่ายลงเวลา' : 'View attendance photo'}
+                    </p>
+                    <p className="text-[11px] text-[var(--color-text-muted)]">
+                      {lang === 'th' ? 'ตรวจสอบภาพเซลฟี่และเวลาที่บันทึก' : 'Inspect photo and timestamp'}
+                    </p>
+                  </div>
+                </button>
+              )}
+          </div>
+        </div>
+      )}
+
+      {/* Photo Preview Modal */}
+      {photoPreviewRecord && (
+        <div
+          className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150"
+          onClick={() => setPhotoPreviewRecord(null)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            className="w-full max-w-sm rounded-3xl bg-[var(--color-card)] border border-[var(--color-border)] overflow-hidden shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-4 py-3 border-b border-[var(--color-border)] flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <p className="text-sm font-extrabold text-[var(--color-text-title)] truncate">
+                  {formatThaiShortDateLabel(photoPreviewRecord.date)} · {photoPreviewRecord.time || '--:--'} น.
+                </p>
+                <p className="text-[11px] text-[var(--color-text-muted)] truncate">
+                  {photoPreviewRecord.recordType === 'check_out'
+                    ? 'เช็คชื่อออกโรงเรียน'
+                    : 'เช็คชื่อเข้าโรงเรียน'}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPhotoPreviewRecord(null)}
+                className="min-h-[40px] min-w-[40px] rounded-xl flex items-center justify-center text-[var(--color-text-muted)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
+                aria-label={lang === 'th' ? 'ปิดรูปถ่าย' : 'Close photo'}
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="p-4 space-y-2.5">
+              <div className="aspect-[3/4] max-h-[60vh] mx-auto rounded-2xl overflow-hidden border border-[var(--color-border)] bg-[var(--color-card-subtle)]">
+                <AttendancePhoto
+                  src={resolveRecordPhotoSource(photoPreviewRecord)}
+                  alt={photoPreviewRecord.userName || photoPreviewRecord.date}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              {photoPreviewRecord.remarks && (
+                <p className="text-[11px] text-[var(--color-text-muted)] text-center">
+                  {photoPreviewRecord.remarks}
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

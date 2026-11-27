@@ -19,6 +19,7 @@ export {
 export { syncDataToSupabase } from './syncRepo';
 export {
   saveStudentSelfAttendance,
+  uploadAttendanceSelfiePhoto,
   saveQueuedAttendanceToDb,
   saveLeaveRequestToDb,
   updateLeaveRequestStatusInDb,

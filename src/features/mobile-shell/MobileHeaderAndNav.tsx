@@ -1,22 +1,8 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React from 'react';
 import {
   ArrowLeftRight,
   Bell,
-  BellRing,
-  BookOpen,
   Building2,
-  Calendar,
-  Clock,
-  Edit3,
-  Gamepad2,
-  Globe,
-  Home,
-  Laptop,
-  LayoutGrid,
-  LogOut,
-  Moon,
-  ShieldCheck,
-  Sun,
   User,
 } from 'lucide-react';
 import type { AppLanguage, AuthUser, School, ThemePalette, UserRole } from '../../types';
@@ -29,17 +15,17 @@ interface MobileHeaderProps {
   currentUser?: AuthUser | null;
   currentRole: UserRole;
   lang: AppLanguage;
-  setLang: (lang: AppLanguage) => void;
-  isLight: boolean;
-  setThemePalette: (palette: ThemePalette) => void;
+  setLang?: (lang: AppLanguage) => void;
+  isLight?: boolean;
+  setThemePalette?: (palette: ThemePalette) => void;
   unreadCount: number;
   onOpenNotifications?: () => void;
   onOpenProfile: () => void;
   onOpenSchoolSwitcher?: () => void;
   canSwitchAdminTeacherMode: boolean;
   onSwitchOperationalRole?: (nextRole: 'admin' | 'teacher') => void;
-  onSwitchToDesktopMode: () => void;
-  onLogout: () => void;
+  onSwitchToDesktopMode?: () => void;
+  onLogout?: () => void;
 }
 
 export const MobileHeader: React.FC<MobileHeaderProps> = ({
@@ -47,21 +33,13 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
   currentUser,
   currentRole,
   lang,
-  setLang,
-  isLight,
-  setThemePalette,
   unreadCount,
   onOpenNotifications,
   onOpenProfile,
   onOpenSchoolSwitcher,
   canSwitchAdminTeacherMode,
   onSwitchOperationalRole,
-  onSwitchToDesktopMode,
-  onLogout,
 }) => {
-  const [isHeaderMenuOpen, setIsHeaderMenuOpen] = useState(false);
-  const headerMenuRef = useRef<HTMLDivElement>(null);
-
   const profileDisplayName =
     (lang === 'th' ? currentUser?.fullNameTh : currentUser?.fullNameEn) ||
     currentUser?.fullNameTh ||
@@ -69,26 +47,6 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
     currentUser?.email ||
     '';
   const profileInitials = profileDisplayName.trim().slice(0, 2).toUpperCase();
-
-  useEffect(() => {
-    if (!isHeaderMenuOpen) return;
-    const handleOutside = (event: MouseEvent) => {
-      if (headerMenuRef.current && !headerMenuRef.current.contains(event.target as Node)) {
-        setIsHeaderMenuOpen(false);
-      }
-    };
-    const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        setIsHeaderMenuOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleOutside);
-    document.addEventListener('keydown', handleEscape);
-    return () => {
-      document.removeEventListener('mousedown', handleOutside);
-      document.removeEventListener('keydown', handleEscape);
-    };
-  }, [isHeaderMenuOpen]);
 
   return (
     <header className="app-topbar sticky top-0 z-40 transition-colors">
@@ -110,7 +68,27 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
           )}
         </div>
 
-        <div className="flex items-center gap-1.5 shrink-0">
+        <div className="flex items-center gap-1 shrink-0">
+          {canSwitchAdminTeacherMode && onSwitchOperationalRole && (
+            <button
+              type="button"
+              onClick={() => onSwitchOperationalRole(currentRole === 'admin' ? 'teacher' : 'admin')}
+              className="min-h-[36px] px-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[11px] font-bold text-[var(--color-primary-text)] inline-flex items-center gap-1 cursor-pointer transition hover:bg-[var(--color-card)]"
+              title={
+                currentRole === 'admin'
+                  ? lang === 'th'
+                    ? 'สลับเป็นโหมดครูผู้สอน'
+                    : 'Teacher mode'
+                  : lang === 'th'
+                    ? 'สลับเป็นโหมด Admin'
+                    : 'Admin mode'
+              }
+            >
+              <ArrowLeftRight className="w-3 h-3 shrink-0" />
+              <span>{currentRole === 'admin' ? (lang === 'th' ? 'โหมดครู' : 'Teacher') : 'Admin'}</span>
+            </button>
+          )}
+
           {onOpenNotifications && (
             <button
               type="button"
@@ -125,113 +103,26 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
             </button>
           )}
 
-          <div ref={headerMenuRef} className="relative">
-            <button
-              type="button"
-              onClick={() => setIsHeaderMenuOpen((prev) => !prev)}
-              aria-expanded={isHeaderMenuOpen}
-              className="min-h-[40px] min-w-[40px] flex items-center justify-center rounded-full hover:bg-[var(--color-card-subtle)] cursor-pointer transition"
-              aria-label={lang === 'th' ? 'เมนูโปรไฟล์และการตั้งค่า' : 'Profile & Settings'}
-              title={profileDisplayName || (lang === 'th' ? 'เมนูโปรไฟล์' : 'Profile')}
-            >
-              {currentUser?.avatarUrl ? (
-                <img
-                  src={currentUser.avatarUrl}
-                  alt={profileDisplayName || 'Profile'}
-                  referrerPolicy="no-referrer"
-                  className="w-7 h-7 rounded-full object-cover border border-[var(--color-border)] bg-[var(--color-card-subtle)]"
-                />
-              ) : (
-                <span className="w-7 h-7 rounded-full border border-[var(--color-border)] bg-[var(--color-primary-light)] text-[var(--color-primary-text)] text-[11px] font-bold flex items-center justify-center">
-                  {profileInitials || <User className="w-3.5 h-3.5" />}
-                </span>
-              )}
-            </button>
-            {isHeaderMenuOpen && (
-              <div className="absolute right-0 top-12 z-50 w-56 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-lg p-1.5 space-y-0.5 text-[13px]">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsHeaderMenuOpen(false);
-                    onOpenProfile();
-                  }}
-                  className="w-full px-3 py-2.5 rounded-lg text-left flex items-center gap-2 text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
-                >
-                  <User className="w-4 h-4 text-[var(--color-text-muted)]" />
-                  <span>{lang === 'th' ? 'บัญชีและโปรไฟล์' : 'Account & Profile'}</span>
-                </button>
-                {canSwitchAdminTeacherMode && onSwitchOperationalRole && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsHeaderMenuOpen(false);
-                      onSwitchOperationalRole(currentRole === 'admin' ? 'teacher' : 'admin');
-                    }}
-                    className="w-full px-3 py-2.5 rounded-lg text-left flex items-center gap-2 font-bold text-[var(--color-primary-text)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
-                  >
-                    <ArrowLeftRight className="w-4 h-4 shrink-0" />
-                    <span>
-                      {currentRole === 'admin'
-                        ? (lang === 'th' ? 'สลับเป็นโหมดครูผู้สอน' : 'Switch to Teacher Mode')
-                        : (lang === 'th' ? 'สลับเป็นโหมด Admin' : 'Switch to Admin Mode')}
-                    </span>
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsHeaderMenuOpen(false);
-                    onSwitchToDesktopMode();
-                  }}
-                  className="w-full px-3 py-2.5 rounded-lg text-left flex items-center gap-2 text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
-                >
-                  <Laptop className="w-4 h-4 text-[var(--color-text-muted)]" />
-                  <span>{lang === 'th' ? 'สลับมุมมองคอมพิวเตอร์' : 'Desktop View'}</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsHeaderMenuOpen(false);
-                    setLang(lang === 'th' ? 'en' : 'th');
-                  }}
-                  className="w-full px-3 py-2.5 rounded-lg text-left flex items-center justify-between text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
-                >
-                  <span className="flex items-center gap-2">
-                    <Globe className="w-4 h-4 text-[var(--color-text-muted)]" />
-                    {lang === 'th' ? 'ภาษา' : 'Language'}
-                  </span>
-                  <span className="font-mono text-xs text-[var(--color-text-muted)]">{lang.toUpperCase()}</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsHeaderMenuOpen(false);
-                    setThemePalette(isLight ? 'sapphire' : 'light_warm');
-                  }}
-                  className="w-full px-3 py-2.5 rounded-lg text-left flex items-center gap-2 text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
-                >
-                  {isLight ? (
-                    <Moon className="w-4 h-4 text-[var(--color-text-muted)]" />
-                  ) : (
-                    <Sun className="w-4 h-4 text-[var(--color-text-muted)]" />
-                  )}
-                  <span>{isLight ? (lang === 'th' ? 'โหมดกลางคืน' : 'Dark Mode') : (lang === 'th' ? 'โหมดสว่าง' : 'Light Mode')}</span>
-                </button>
-                <div className="my-1 border-t border-[var(--color-border)]" />
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsHeaderMenuOpen(false);
-                    onLogout();
-                  }}
-                  className="w-full px-3 py-2.5 rounded-lg text-left flex items-center gap-2 text-rose-600 dark:text-rose-400 hover:bg-[var(--color-card-subtle)] cursor-pointer"
-                >
-                  <LogOut className="w-4 h-4" />
-                  <span>{lang === 'th' ? 'ออกจากระบบ' : 'Sign Out'}</span>
-                </button>
-              </div>
+          <button
+            type="button"
+            onClick={onOpenProfile}
+            className="min-h-[40px] min-w-[40px] flex items-center justify-center rounded-full hover:bg-[var(--color-card-subtle)] cursor-pointer transition"
+            aria-label={lang === 'th' ? 'บัญชีและโปรไฟล์' : 'Account & Profile'}
+            title={profileDisplayName || (lang === 'th' ? 'บัญชีและโปรไฟล์' : 'Account & Profile')}
+          >
+            {currentUser?.avatarUrl ? (
+              <img
+                src={currentUser.avatarUrl}
+                alt={profileDisplayName || 'Profile'}
+                referrerPolicy="no-referrer"
+                className="w-7 h-7 rounded-full object-cover border border-[var(--color-border)] bg-[var(--color-card-subtle)]"
+              />
+            ) : (
+              <span className="w-7 h-7 rounded-full border border-[var(--color-border)] bg-[var(--color-primary-light)] text-[var(--color-primary-text)] text-[11px] font-bold flex items-center justify-center">
+                {profileInitials || <User className="w-3.5 h-3.5" />}
+              </span>
             )}
-          </div>
+          </button>
         </div>
       </div>
     </header>
@@ -253,8 +144,6 @@ interface MobileBottomNavProps {
   canOpenPortfolio: boolean;
   pendingLeavesCount: number;
   onResetCheckinToSelfie: () => void;
-  onOpenAllModules?: () => void;
-  allModulesActive?: boolean;
 }
 
 export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
@@ -272,8 +161,6 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
   canOpenPortfolio,
   pendingLeavesCount,
   onResetCheckinToSelfie,
-  onOpenAllModules,
-  allModulesActive = false,
 }) => {
   const slot1Active = activeTab === 'home';
   const slot2Active = canSelfCheckin
@@ -284,36 +171,32 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
     : canViewTimetable
       ? activeTab === 'timetable'
       : activeTab === 'announcements';
+
   const slot3Active =
     currentRole === 'admin'
       ? activeTab === 'admin_quick'
       : currentRole === 'super_admin'
         ? activeTab === 'super_schools'
-        : currentRole === 'teacher'
-          ? canViewTimetable
-            ? activeTab === 'timetable'
-            : canOpenAnnouncements
-              ? activeTab === 'announcements'
-              : activeTab === 'executive'
-          : currentRole === 'parent'
-            ? canOpenAnnouncements
-              ? activeTab === 'announcements'
-              : canViewTimetable
-                ? activeTab === 'timetable'
-                : false
-            : canPlayGames
-              ? activeTab === 'games'
-              : canAccessHomework
-                ? activeTab === 'homework'
-                : canViewGradesStudent
-                  ? activeTab === 'student_grades'
-                  : canOpenPortfolio
-                    ? activeTab === 'portfolio'
-                    : false;
+        : canViewTimetable
+          ? activeTab === 'timetable'
+          : currentRole === 'student'
+            ? canAccessHomework
+              ? activeTab === 'homework'
+              : canViewGradesStudent
+                ? activeTab === 'student_grades'
+                : canPlayGames
+                  ? activeTab === 'games'
+                  : activeTab === 'portfolio'
+            : activeTab === 'executive';
+
+  const slot4IsAnnouncements = canOpenAnnouncements;
+  const slot4Active = slot4IsAnnouncements
+    ? activeTab === 'announcements'
+    : activeTab === 'profile';
 
   return (
     <nav className="fixed bottom-0 inset-x-0 z-40 border-t border-[var(--color-border)] bg-[var(--color-card)]/92 backdrop-blur-xl shadow-[0_-8px_28px_-14px_rgba(37,99,235,0.18)] px-2 py-1 safe-area-bottom">
-      <div className={`max-w-md mx-auto grid ${onOpenAllModules ? 'grid-cols-4' : 'grid-cols-3'} gap-1`}>
+      <div className="max-w-md mx-auto grid grid-cols-4 gap-1">
         {/* SLOT 1: HOME */}
         <button
           type="button"
@@ -346,13 +229,17 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
           </span>
         </button>
 
-        {/* SLOT 2: CHECK-IN (or Timetable / Announcements fallback) */}
+        {/* SLOT 2: CHECK-IN / LOGS */}
         <button
           type="button"
           onClick={() => {
             if (canSelfCheckin) {
-              onResetCheckinToSelfie();
-              setActiveTab('checkin');
+              if (currentRole === 'parent') {
+                setActiveTab('attendance_history');
+              } else {
+                onResetCheckinToSelfie();
+                setActiveTab('checkin');
+              }
             } else if (currentRole === 'super_admin') {
               setActiveTab('executive');
             } else if (canViewTimetable) {
@@ -408,12 +295,12 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
                   ? 'มาเรียน'
                   : 'Logs'
                 : lang === 'th'
-                  ? 'เช็คชื่อ'
+                  ? 'ลงเวลา'
                   : 'Check-in'}
           </span>
         </button>
 
-        {/* SLOT 3: ROLE PRIMARY ACTION */}
+        {/* SLOT 3: TIMETABLE / ADMIN MANAGE */}
         {currentRole === 'admin' ? (
           <button
             type="button"
@@ -455,13 +342,23 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
             </span>
             <span className="text-[11px] truncate max-w-full">{lang === 'th' ? 'โรงเรียน' : 'Schools'}</span>
           </button>
-        ) : currentRole === 'teacher' ? (
+        ) : (
           <button
             type="button"
             onClick={() => {
-              if (canViewTimetable) setActiveTab('timetable');
-              else if (canOpenAnnouncements) setActiveTab('announcements');
-              else setActiveTab('executive');
+              if (canViewTimetable) {
+                setActiveTab('timetable');
+              } else if (currentRole === 'student') {
+                if (canAccessHomework) setActiveTab('homework');
+                else if (canViewGradesStudent) setActiveTab('student_grades');
+                else if (canPlayGames) {
+                  setActiveTab('games');
+                  setActiveGameView('hub');
+                } else if (canOpenPortfolio) setActiveTab('portfolio');
+                else setActiveTab('profile');
+              } else {
+                setActiveTab('executive');
+              }
             }}
             className={`tone-4 min-h-[46px] flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
               slot3Active
@@ -474,135 +371,79 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
                 slot3Active ? 'tone-chip-solid shadow-xs' : ''
               }`}
             >
-              <FutureNavIcon tab="timetable" size={18} active={slot3Active} />
-            </span>
-            <span className="text-[11px] truncate max-w-full">
-              {canViewTimetable
-                ? lang === 'th'
-                  ? 'ตารางสอน'
-                  : 'Schedule'
-                : canOpenAnnouncements
-                  ? lang === 'th'
-                    ? 'ประกาศ'
-                    : 'News'
-                  : lang === 'th'
-                    ? 'ภาพรวม'
-                    : 'Overview'}
-            </span>
-          </button>
-        ) : currentRole === 'parent' ? (
-          <button
-            type="button"
-            onClick={() => {
-              if (canOpenAnnouncements) setActiveTab('announcements');
-              else if (canViewTimetable) setActiveTab('timetable');
-              else setActiveTab('profile');
-            }}
-            className={`tone-6 min-h-[46px] flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
-              slot3Active
-                ? 'bg-[var(--tone-soft)] text-[var(--tone)] font-bold'
-                : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
-            }`}
-          >
-            <span
-              className={`inline-flex items-center justify-center w-8 h-6 rounded-lg mb-0.5 transition ${
-                slot3Active ? 'tone-chip-solid shadow-xs' : ''
-              }`}
-            >
-              <FutureNavIcon tab="announcements" size={18} active={slot3Active} />
-            </span>
-            <span className="text-[11px] truncate max-w-full">
-              {canOpenAnnouncements
-                ? lang === 'th'
-                  ? 'ประกาศ'
-                  : 'News'
-                : canViewTimetable
-                  ? lang === 'th'
-                    ? 'ตารางเรียน'
-                    : 'Schedule'
-                  : lang === 'th'
-                    ? 'บัตร'
-                    : 'ID'}
-            </span>
-          </button>
-        ) : (
-          <button
-            type="button"
-            onClick={() => {
-              if (canPlayGames) {
-                setActiveTab('games');
-                setActiveGameView('hub');
-              } else if (canAccessHomework) {
-                setActiveTab('homework');
-              } else if (canViewGradesStudent) {
-                setActiveTab('student_grades');
-              } else if (canOpenPortfolio) {
-                setActiveTab('portfolio');
-              } else {
-                setActiveTab('profile');
-              }
-            }}
-            className={`tone-5 min-h-[46px] flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
-              slot3Active
-                ? 'bg-[var(--tone-soft)] text-[var(--tone)] font-bold'
-                : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
-            }`}
-          >
-            <span
-              className={`inline-flex items-center justify-center w-8 h-6 rounded-lg mb-0.5 transition ${
-                slot3Active ? 'tone-chip-solid shadow-xs' : ''
-              }`}
-            >
               <FutureNavIcon
-                tab={canPlayGames ? 'games' : canAccessHomework ? 'homework' : 'gradebook'}
+                tab={
+                  canViewTimetable
+                    ? 'timetable'
+                    : currentRole === 'student'
+                      ? canAccessHomework
+                        ? 'homework'
+                        : 'gradebook'
+                      : 'executive_monitor'
+                }
                 size={18}
                 active={slot3Active}
               />
             </span>
             <span className="text-[11px] truncate max-w-full">
-              {canPlayGames
-                ? lang === 'th'
-                  ? 'เกมส์'
-                  : 'Arcade'
-                : canAccessHomework
+              {canViewTimetable
+                ? currentRole === 'teacher'
                   ? lang === 'th'
-                    ? 'การบ้าน'
-                    : 'Tasks'
-                  : canViewGradesStudent
+                    ? 'ตารางสอน'
+                    : 'Schedule'
+                  : lang === 'th'
+                    ? 'ตารางเรียน'
+                    : 'Schedule'
+                : currentRole === 'student'
+                  ? canAccessHomework
                     ? lang === 'th'
-                      ? 'เกรด'
-                      : 'Grades'
-                    : lang === 'th'
-                      ? 'ผลงาน'
-                      : 'Portfolio'}
+                      ? 'การบ้าน'
+                      : 'Tasks'
+                    : canViewGradesStudent
+                      ? lang === 'th'
+                        ? 'เกรด'
+                        : 'Grades'
+                      : lang === 'th'
+                        ? 'เกมส์'
+                        : 'Games'
+                  : lang === 'th'
+                    ? 'ภาพรวม'
+                    : 'Overview'}
             </span>
           </button>
         )}
 
-        {onOpenAllModules && (
-          <button
-            type="button"
-            onClick={onOpenAllModules}
-            aria-label={lang === 'th' ? 'เปิดเมนูทุกฟังก์ชัน' : 'Open all modules'}
-            aria-pressed={allModulesActive}
-            className={`tone-7 min-h-[46px] flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
-              allModulesActive
-                ? 'bg-[var(--tone-soft)] text-[var(--tone)] font-bold'
-                : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
+        {/* SLOT 4: ANNOUNCEMENTS / ACCOUNT */}
+        <button
+          type="button"
+          onClick={() => setActiveTab(slot4IsAnnouncements ? 'announcements' : 'profile')}
+          className={`tone-6 min-h-[46px] flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
+            slot4Active
+              ? 'bg-[var(--tone-soft)] text-[var(--tone)] font-bold'
+              : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
+          }`}
+        >
+          <span
+            className={`inline-flex items-center justify-center w-8 h-6 rounded-lg mb-0.5 transition ${
+              slot4Active ? 'tone-chip-solid shadow-xs' : ''
             }`}
           >
-            <span
-              className={`inline-flex items-center justify-center w-8 h-6 rounded-lg mb-0.5 transition ${
-                allModulesActive ? 'tone-chip-solid shadow-xs' : ''
-              }`}
-            >
-              <FutureNavIcon tab="dashboard" size={18} active={allModulesActive} />
-            </span>
-            <span className="text-[11px] truncate max-w-full">
-              {lang === 'th' ? 'ทุกฟังก์ชัน' : 'Modules'}
-            </span>
-          </button>
-        )}
+            {slot4IsAnnouncements ? (
+              <FutureNavIcon tab="announcements" size={18} active={slot4Active} />
+            ) : (
+              <User className="w-4.5 h-4.5" />
+            )}
+          </span>
+          <span className="text-[11px] truncate max-w-full">
+            {slot4IsAnnouncements
+              ? lang === 'th'
+                ? 'ประกาศ'
+                : 'News'
+              : lang === 'th'
+                ? 'บัญชี'
+                : 'Account'}
+          </span>
+        </button>
       </div>
     </nav>
   );
