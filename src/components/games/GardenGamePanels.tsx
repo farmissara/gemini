@@ -137,7 +137,7 @@ export const GameFloatingBoard: React.FC<{
         </div>
 
         {/* Body */}
-        <div className="p-3 sm:p-4 overflow-y-auto no-scrollbar space-y-3">{children}</div>
+        <div className="flex-1 min-h-0 p-3 sm:p-4 overflow-y-auto no-scrollbar space-y-3">{children}</div>
       </div>
     </div>
   );
@@ -1195,12 +1195,6 @@ export const GardenBoardSet: React.FC<GardenBoardSetProps> = ({
 
         {eventsTab === 'quiz' && activeQuestion && (
           <div className="space-y-3">
-            <LifeSubjectsMatrixPanel
-              farmState={farmState}
-              lifeAutoPromptEnabled={lifeAutoPromptEnabled}
-              onToggleLifeAutoPrompt={onToggleLifeAutoPrompt}
-              onLaunchSubjectScenario={onLaunchSubjectScenario}
-            />
             <div className="rounded-2xl border border-[#d6b37c] bg-white/90 dark:bg-stone-900/85 p-3 space-y-2">
               <p className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400">
                 คลังควิซจากครู · {activeQuestion.subject} · โควตาวันนี้ {quizUsedToday}/3 (ตอบถูก +2💧 +1✨ +18🪙)

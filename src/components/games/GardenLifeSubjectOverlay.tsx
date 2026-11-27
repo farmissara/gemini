@@ -121,7 +121,7 @@ export const LiveSubjectChallengeCard: React.FC<LiveSubjectChallengeCardProps> =
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/38 backdrop-blur-[2px]"
+      className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/45 backdrop-blur-[2px]"
       role="dialog"
       aria-modal="true"
       aria-label={`เหตุการณ์จริงวิชา${challenge.subjectNameTh}`}
@@ -129,35 +129,35 @@ export const LiveSubjectChallengeCard: React.FC<LiveSubjectChallengeCardProps> =
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-md rounded-[24px] border-2 border-[#c8a165] bg-[#fcf7ec]/98 dark:bg-[#1f1912]/98 backdrop-blur-xl shadow-[0_18px_46px_rgba(10,20,8,0.52)] overflow-hidden"
+        className="w-full max-w-md sm:max-w-lg max-h-[88dvh] flex flex-col rounded-2xl border-2 border-[#c8a165] bg-[#fcf7ec]/98 dark:bg-[#1f1912]/98 backdrop-blur-xl shadow-[0_18px_46px_rgba(10,20,8,0.52)] overflow-hidden"
       >
         {/* Slim header */}
-        <div className="px-4 py-2.5 bg-gradient-to-r from-[#5a3d20] to-[#3f6212] text-amber-50 flex items-center justify-between gap-2 border-b border-[#d6b37c]/45">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-8 h-8 rounded-xl bg-white/95 flex items-center justify-center shrink-0">
-              <SubjectBadgeSvg subjectId={challenge.subjectId} className="w-6 h-6" />
+        <div className="shrink-0 px-3.5 py-2 bg-gradient-to-r from-[#5a3d20] to-[#3f6212] text-amber-50 flex items-center justify-between gap-2 border-b border-[#d6b37c]/45">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="w-7 h-7 rounded-lg bg-white/95 flex items-center justify-center shrink-0">
+              <SubjectBadgeSvg subjectId={challenge.subjectId} className="w-5 h-5" />
             </div>
             <div className="min-w-0">
-              <p className="text-[11px] font-bold text-amber-200 truncate">
+              <p className="text-[10px] font-bold text-amber-200 truncate">
                 วิชา{meta.shortTh} · เหตุการณ์จริงในสวน
               </p>
-              <h3 className="text-xs sm:text-sm font-black truncate">{challenge.contextActionTh}</h3>
+              <h3 className="text-xs font-black truncate">{challenge.contextActionTh}</h3>
             </div>
           </div>
           <button
             type="button"
             onClick={onClose}
             aria-label="ปิดหน้าต่าง"
-            className="w-8 h-8 rounded-full bg-black/25 hover:bg-black/40 text-amber-50 flex items-center justify-center cursor-pointer shrink-0"
+            className="w-7 h-7 rounded-full bg-black/25 hover:bg-black/40 text-amber-50 flex items-center justify-center cursor-pointer shrink-0"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        <div className="p-4 space-y-3">
-          {/* Question & Reward line (plain typography, no static pills) */}
-          <div className="space-y-1.5">
-            <p className="text-sm font-black text-[#45270f] dark:text-amber-50 leading-snug">
+        <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar p-3 sm:p-3.5 space-y-2.5">
+          {/* Question & Reward line */}
+          <div className="space-y-1">
+            <p className="text-xs sm:text-sm font-black text-[#45270f] dark:text-amber-50 leading-snug">
               {challenge.questionTh}
             </p>
             <p className="text-[11px] font-bold text-[#7c5c3e] dark:text-stone-400 tabular-nums">
@@ -166,8 +166,8 @@ export const LiveSubjectChallengeCard: React.FC<LiveSubjectChallengeCardProps> =
             </p>
           </div>
 
-          {/* Options */}
-          <div className="space-y-2">
+          {/* Options (2-column on sm+ to stay compact vertically) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
             {challenge.options.map((opt, idx) => {
               const selected = pickedIndex === idx;
               const rightOpt = idx === challenge.correctIndex;
@@ -188,12 +188,12 @@ export const LiveSubjectChallengeCard: React.FC<LiveSubjectChallengeCardProps> =
                   type="button"
                   disabled={isAnswered}
                   onClick={() => onSelectOption(idx)}
-                  className={`w-full min-h-[42px] px-3 py-2 rounded-xl border text-left text-xs font-bold flex items-center justify-between gap-2 cursor-pointer transition ${btnCls}`}
+                  className={`w-full min-h-[38px] px-2.5 py-1.5 rounded-xl border text-left text-[11px] sm:text-xs font-bold flex items-center justify-between gap-1.5 cursor-pointer transition ${btnCls}`}
                 >
-                  <span>
+                  <span className="leading-snug">
                     {idx + 1}. {opt}
                   </span>
-                  {isAnswered && rightOpt && <Check className="w-4 h-4 text-emerald-600 shrink-0" />}
+                  {isAnswered && rightOpt && <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />}
                 </button>
               );
             })}
@@ -201,14 +201,14 @@ export const LiveSubjectChallengeCard: React.FC<LiveSubjectChallengeCardProps> =
 
           {/* Feedback + Real-Life Application Tip */}
           {isAnswered ? (
-            <div className="rounded-xl border border-[#d6b37c]/80 bg-white/90 dark:bg-stone-900/90 p-3 space-y-2.5">
+            <div className="rounded-xl border border-[#d6b37c]/80 bg-white/90 dark:bg-stone-900/90 p-2.5 space-y-2">
               <div className="flex items-start gap-2">
                 <Lightbulb className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-                <div className="space-y-0.5">
-                  <p className={`text-xs font-black ${isCorrect ? 'text-emerald-700 dark:text-emerald-300' : 'text-amber-700 dark:text-amber-300'}`}>
+                <div className="space-y-0.5 min-w-0">
+                  <p className={`text-[11px] font-black ${isCorrect ? 'text-emerald-700 dark:text-emerald-300' : 'text-amber-700 dark:text-amber-300'}`}>
                     {isCorrect ? 'เข้าใจถูกต้อง! นำความรู้ไปใช้จริงสำเร็จ' : 'คำตอบที่ถูกต้องตามหลักวิชาชีวิตจริง'}
                   </p>
-                  <p className="text-[11px] text-[#45270f] dark:text-stone-300 leading-relaxed">
+                  <p className="text-[11px] text-[#45270f] dark:text-stone-300 leading-snug">
                     {challenge.realLifeTipTh}
                   </p>
                 </div>
@@ -218,16 +218,16 @@ export const LiveSubjectChallengeCard: React.FC<LiveSubjectChallengeCardProps> =
                   <button
                     type="button"
                     onClick={onNextSameSubject}
-                    className="min-h-[38px] px-3 rounded-xl border border-[#c8a165] bg-[#f1e4c9] text-[#45270f] text-xs font-black inline-flex items-center gap-1.5 cursor-pointer"
+                    className="min-h-[34px] px-3 rounded-xl border border-[#c8a165] bg-[#f1e4c9] text-[#45270f] text-[11px] font-black inline-flex items-center gap-1 cursor-pointer"
                   >
-                    <RefreshCw className="w-3.5 h-3.5" />
+                    <RefreshCw className="w-3 h-3" />
                     <span>เคสถัดไป</span>
                   </button>
                 )}
                 <button
                   type="button"
                   onClick={onClose}
-                  className="min-h-[38px] px-4 rounded-xl bg-[#15803d] hover:bg-[#166534] text-white text-xs font-black cursor-pointer"
+                  className="min-h-[34px] px-3.5 rounded-xl bg-[#15803d] hover:bg-[#166534] text-white text-[11px] font-black cursor-pointer"
                 >
                   กลับไปดูแลสวนต่อ
                 </button>
@@ -238,7 +238,7 @@ export const LiveSubjectChallengeCard: React.FC<LiveSubjectChallengeCardProps> =
               <button
                 type="button"
                 onClick={onClose}
-                className="min-h-[34px] px-3 rounded-lg text-[11px] font-bold text-[#7c5c3e] hover:text-[#45270f] cursor-pointer"
+                className="min-h-[30px] px-2.5 rounded-lg text-[11px] font-bold text-[#7c5c3e] hover:text-[#45270f] cursor-pointer"
               >
                 ข้ามไว้ทีหลัง
               </button>
