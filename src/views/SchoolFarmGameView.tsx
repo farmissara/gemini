@@ -2,38 +2,22 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowLeft,
   ArrowUpCircle,
-  Award,
-  BookOpen,
-  Building2,
   ChefHat,
-  Coins,
-  Droplets,
-  Gem,
   Gift,
   Grid2X2Plus,
-  Hand,
   HelpCircle,
-  Home,
-  Leaf,
   Lock,
   LockOpen,
   Maximize2,
-  MessageCircleHeart,
   Minimize2,
   Pencil,
   RotateCw,
   ShoppingBag,
-  Shovel,
   Sparkles,
-  Sprout,
-  Star,
-  Store,
   Trash2,
   Truck,
-  Users,
   Volume2,
   VolumeX,
-  Wheat,
   X,
 } from 'lucide-react';
 import type {
@@ -116,6 +100,21 @@ import {
   type VisitorRequest,
 } from '../lib/schoolFarmEngine';
 import { IsometricFarmBoard, type FloatingFeedback } from '../components/games/IsometricFarmBoard';
+import {
+  HayDayChatBubbleIcon,
+  HayDayCoinIcon,
+  HayDayFarmBookIcon,
+  HayDayFriendsIcon,
+  HayDayGemIcon,
+  HayDayGiftBoxIcon,
+  HayDayLevelStarBadge,
+  HayDayMailIcon,
+  HayDayMedallionButton,
+  HayDayNewspaperIcon,
+  HayDayRegisterIcon,
+  HayDayToolSprite,
+  HayDayTruckIcon,
+} from '../components/games/HayDayHudIcons';
 
 interface SchoolFarmGameViewProps {
   lang: AppLanguage;
@@ -969,77 +968,57 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
     id: FarmTool;
     labelTh: string;
     labelEn: string;
-    icon: React.ComponentType<{ className?: string }>;
     badge?: number;
-    toneClass: string;
   }[] = [
     {
       id: 'inspect',
       labelTh: 'แตะ',
       labelEn: 'Tap',
-      icon: Hand,
       badge: readyCropCount + readyBuildingCount > 0 ? readyCropCount + readyBuildingCount : undefined,
-      toneClass: 'text-emerald-700 dark:text-emerald-300',
     },
     {
       id: 'till',
       labelTh: 'ขุดดิน',
       labelEn: 'Till',
-      icon: Shovel,
-      toneClass: 'text-amber-700 dark:text-amber-300',
     },
     {
       id: 'plant',
       labelTh: 'ปลูกผัก',
       labelEn: 'Plant',
-      icon: Sprout,
-      toneClass: 'text-lime-700 dark:text-lime-300',
     },
     {
       id: 'water',
       labelTh: 'รดน้ำ',
       labelEn: 'Water',
-      icon: Droplets,
       badge: farmState.water,
-      toneClass: 'text-sky-700 dark:text-sky-300',
     },
     {
       id: 'daily_fertilize',
       labelTh: 'ปุ๋ยวัน',
       labelEn: 'Compost',
-      icon: Leaf,
       badge: farmState.dailyFertilizer || 0,
-      toneClass: 'text-emerald-700 dark:text-emerald-300',
     },
     {
       id: 'fertilize',
       labelTh: 'ปุ๋ยทอง×2',
       labelEn: 'Gold×2',
-      icon: Sparkles,
       badge: farmState.fertilizer,
-      toneClass: 'text-yellow-700 dark:text-yellow-300',
     },
     {
       id: 'clear_weed',
       labelTh: 'วัชพืช',
       labelEn: 'Weed',
-      icon: Shovel,
       badge: weedCount > 0 ? weedCount : undefined,
-      toneClass: 'text-rose-700 dark:text-rose-300',
     },
     {
       id: 'build',
-      labelTh: 'สร้างเมือง',
+      labelTh: 'สร้าง',
       labelEn: 'Build',
-      icon: Building2,
-      toneClass: 'text-indigo-700 dark:text-indigo-300',
     },
     {
       id: 'unlock',
-      labelTh: 'ขยายแปลง',
+      labelTh: 'ขยาย',
       labelEn: 'Expand',
-      icon: LockOpen,
-      toneClass: 'text-violet-700 dark:text-violet-300',
     },
   ];
 
@@ -1084,115 +1063,138 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
         onOpenVisitors={() => setActiveModal('visitors')}
       />
 
-      {/* TOP-LEFT HAY DAY CREST HUD */}
-      <div className="absolute top-2 left-2 sm:top-3 sm:left-3 z-20 flex items-center gap-1.5 max-w-[54vw] pointer-events-auto">
-        <button
-          type="button"
+      {/* TOP-LEFT: HAY DAY BLUE STAR LEVEL BADGE + EXIT/NAMEPLATE */}
+      <div className="absolute top-2 left-2 sm:top-3 sm:left-3 z-20 flex items-center gap-1.5 max-w-[56vw] pointer-events-auto">
+        <HayDayMedallionButton
+          size="sm"
           onClick={() => {
             if (onExit) onExit();
             else setIsFullscreen((prev) => !prev);
           }}
-          aria-label={onExit ? 'Exit Farm' : 'Toggle Fullscreen'}
-          className="min-w-[40px] min-h-[40px] px-2.5 rounded-xl border-2 border-amber-800/40 bg-amber-50/95 dark:bg-slate-900/92 text-amber-950 dark:text-amber-100 shadow-lg inline-flex items-center justify-center gap-1 text-xs font-black whitespace-nowrap shrink-0 cursor-pointer active:scale-95 transition"
+          ariaLabel={onExit ? 'Exit Farm' : 'Toggle Fullscreen'}
+          title={onExit ? (lang === 'th' ? 'กลับหน้าหลัก' : 'Exit') : isFullscreen ? 'ย่อจอ' : 'เต็มจอ'}
         >
-          {onExit ? <ArrowLeft className="w-4 h-4" /> : isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
-          <span className="hidden sm:inline">{onExit ? (lang === 'th' ? 'ออก' : 'Exit') : isFullscreen ? 'ย่อจอ' : 'เต็มจอ'}</span>
-        </button>
-
-        <div className="rounded-xl border-2 border-amber-800/40 bg-amber-50/95 dark:bg-slate-900/92 shadow-lg px-2.5 py-1.5 flex items-center gap-2 min-w-0">
-          <div className="w-8 h-8 rounded-lg bg-amber-500 text-white font-black text-xs flex items-center justify-center shrink-0 tabular-nums shadow-xs">
-            Lv.{townLevelInfo.level}
-          </div>
-          <div className="min-w-0">
-            <div className="flex items-center gap-1">
-              <p className="text-xs font-black text-amber-950 dark:text-amber-50 truncate max-w-[120px] sm:max-w-[180px]">
-                {farmState.farmName}
-              </p>
-              <button
-                type="button"
-                onClick={() => {
-                  setFarmNameDraft(farmState.farmName);
-                  setIsEditingFarmName(true);
-                }}
-                aria-label="Edit farm name"
-                className="text-amber-800 dark:text-amber-300 hover:opacity-80 cursor-pointer shrink-0"
-              >
-                <Pencil className="w-3 h-3" />
-              </button>
-            </div>
-            <div className="flex items-center gap-1.5 text-[10px] font-bold text-amber-800 dark:text-amber-200 tabular-nums whitespace-nowrap">
-              <span>ความเจริญ {prosperityScore}</span>
-              {hasGoldenStreakBuff && (
-                <span className="px-1.5 py-0.2 rounded-md bg-yellow-400/90 text-amber-950 font-black">
-                  ✨ โตไว ×2
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* TOP-RIGHT HAY DAY RESOURCE BAR */}
-      <div className="absolute top-2 right-2 sm:top-3 sm:right-3 z-20 flex items-center gap-1 max-w-[44vw] sm:max-w-none overflow-x-auto no-scrollbar pointer-events-auto">
-        <div className="rounded-xl border-2 border-amber-800/40 bg-amber-50/95 dark:bg-slate-900/92 shadow-lg px-2.5 py-1.5 flex items-center gap-2.5 text-xs font-black text-amber-950 dark:text-amber-50 tabular-nums whitespace-nowrap">
-          <span className="inline-flex items-center gap-1" title="เหรียญฟาร์ม">
-            <Coins className="w-3.5 h-3.5 text-amber-500" />
-            {farmState.coins}
-          </span>
-          <span className="inline-flex items-center gap-1" title="เพชรตลาดกลาง">
-            <Gem className="w-3.5 h-3.5 text-cyan-500" />
-            {playerGems}
-          </span>
-          <span className="inline-flex items-center gap-1" title="ดาวเมือง">
-            <Star className="w-3.5 h-3.5 text-violet-500" />
-            {farmState.townStars}
-          </span>
-          <span className="inline-flex items-center gap-1" title="น้ำรดต้นไม้">
-            <Droplets className="w-3.5 h-3.5 text-sky-500" />
-            {farmState.water}
-          </span>
-          <span className="hidden sm:inline-flex items-center gap-1" title="ปุ๋ยวัน">
-            <Leaf className="w-3.5 h-3.5 text-emerald-500" />
-            {farmState.dailyFertilizer || 0}
-          </span>
-          <span className="inline-flex items-center gap-1" title="ปุ๋ยทอง ×2">
-            <Sparkles className="w-3.5 h-3.5 text-yellow-500" />
-            {farmState.fertilizer}
-          </span>
-        </div>
-
-        <button
-          type="button"
-          onClick={() => void requestLandscapeFullscreen()}
-          title={lang === 'th' ? 'ขยายเต็มจอแนวนอน (Hay Day)' : 'Fullscreen Landscape'}
-          aria-label="Fullscreen landscape"
-          className="min-w-[40px] min-h-[40px] rounded-xl border-2 border-amber-800/40 bg-amber-50/95 dark:bg-slate-900/92 text-amber-950 dark:text-amber-100 shadow-lg flex items-center justify-center shrink-0 cursor-pointer"
-        >
-          <RotateCw className="w-4 h-4" />
-        </button>
-
-        <button
-          type="button"
-          onClick={() => persistFarm({ ...farmState, soundMuted: !farmState.soundMuted })}
-          aria-label={farmState.soundMuted ? 'Unmute sound' : 'Mute sound'}
-          className="min-w-[40px] min-h-[40px] rounded-xl border-2 border-amber-800/40 bg-amber-50/95 dark:bg-slate-900/92 text-amber-950 dark:text-amber-100 shadow-lg flex items-center justify-center shrink-0 cursor-pointer"
-        >
-          {farmState.soundMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
-        </button>
+          {onExit ? (
+            <ArrowLeft className="w-5 h-5 text-[#78350f]" strokeWidth={2.8} />
+          ) : isFullscreen ? (
+            <Minimize2 className="w-5 h-5 text-[#78350f]" strokeWidth={2.6} />
+          ) : (
+            <Maximize2 className="w-5 h-5 text-[#78350f]" strokeWidth={2.6} />
+          )}
+        </HayDayMedallionButton>
 
         <button
           type="button"
           onClick={() => setActiveModal('guide')}
-          aria-label="Game Guide"
-          className="min-w-[40px] min-h-[40px] rounded-xl border-2 border-amber-800/40 bg-amber-50/95 dark:bg-slate-900/92 text-amber-950 dark:text-amber-100 shadow-lg flex items-center justify-center shrink-0 cursor-pointer"
+          aria-label="Level and XP"
+          className="relative flex items-center gap-1 cursor-pointer active:scale-95 transition shrink-0"
         >
-          <HelpCircle className="w-4 h-4" />
+          <HayDayLevelStarBadge level={townLevelInfo.level} className="w-12 h-12 sm:w-14 sm:h-14" />
         </button>
+
+        <div className="hidden xs:flex sm:flex flex-col min-w-0 drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)]">
+          <div className="flex items-center gap-1">
+            <span className="text-xs sm:text-sm font-black text-white truncate max-w-[140px] sm:max-w-[200px]">
+              {farmState.farmName}
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                setFarmNameDraft(farmState.farmName);
+                setIsEditingFarmName(true);
+              }}
+              aria-label="Edit farm name"
+              className="text-amber-200 hover:text-white cursor-pointer shrink-0"
+            >
+              <Pencil className="w-3.5 h-3.5" />
+            </button>
+          </div>
+          <div className="flex items-center gap-2 text-[10px] font-black text-amber-100 tabular-nums whitespace-nowrap">
+            <span>XP {townLevelInfo.currentIntoLevel}/{townLevelInfo.nextLevelNeed}</span>
+            {hasGoldenStreakBuff && (
+              <span className="px-1.5 py-0.2 rounded-full bg-yellow-400 text-amber-950 text-[9px] font-black shadow">
+                ✨ โตไว ×2
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* TOP-RIGHT: HAY DAY FLOATING OUTLINED COINS & GEMS + PURPLE GIFT MEDALLION */}
+      <div className="absolute top-2 right-2 sm:top-3 sm:right-3 z-20 flex items-start gap-2 pointer-events-auto">
+        <div className="flex flex-col items-end gap-0.5 select-none">
+          <div className="flex items-center gap-1.5">
+            <span
+              className="text-base sm:text-xl font-black text-white tabular-nums tracking-tight"
+              style={{ textShadow: '0 2px 3px rgba(0,0,0,0.9), 0 0 2px #000' }}
+            >
+              {farmState.coins.toLocaleString()}
+            </span>
+            <HayDayCoinIcon className="w-6 h-6 sm:w-7 sm:h-7" />
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span
+              className="text-sm sm:text-lg font-black text-white tabular-nums tracking-tight"
+              style={{ textShadow: '0 2px 3px rgba(0,0,0,0.9), 0 0 2px #000' }}
+            >
+              {playerGems.toLocaleString()}
+            </span>
+            <HayDayGemIcon className="w-5 h-5 sm:w-6 sm:h-6" />
+          </div>
+          <div
+            className="hidden sm:flex items-center gap-2 text-[11px] font-black text-white tabular-nums pt-0.5"
+            style={{ textShadow: '0 1px 2px rgba(0,0,0,0.9)' }}
+          >
+            <span>💧 {farmState.water}</span>
+            <span>🌱 {farmState.dailyFertilizer || 0}</span>
+            <span>✨ {farmState.fertilizer}</span>
+            <span>★ {farmState.townStars}</span>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-1.5 pt-0.5">
+          <HayDayMedallionButton
+            size="md"
+            onClick={() => setActiveModal('chest')}
+            ariaLabel={lang === 'th' ? 'กล่องเสบียงรางวัล' : 'Discipline Supply Gift'}
+            pulseDot={disciplineSummary.hasAnythingToClaim}
+          >
+            <HayDayGiftBoxIcon className="w-7 h-7 sm:w-8 sm:h-8" />
+          </HayDayMedallionButton>
+
+          <HayDayMedallionButton
+            size="sm"
+            onClick={() => void requestLandscapeFullscreen()}
+            ariaLabel={lang === 'th' ? 'ขยายเต็มจอแนวนอน' : 'Fullscreen Landscape'}
+          >
+            <RotateCw className="w-4 h-4 text-[#78350f]" strokeWidth={2.8} />
+          </HayDayMedallionButton>
+
+          <HayDayMedallionButton
+            size="sm"
+            onClick={() => persistFarm({ ...farmState, soundMuted: !farmState.soundMuted })}
+            ariaLabel={farmState.soundMuted ? 'Unmute sound' : 'Mute sound'}
+          >
+            {farmState.soundMuted ? (
+              <VolumeX className="w-4 h-4 text-[#78350f]" strokeWidth={2.6} />
+            ) : (
+              <Volume2 className="w-4 h-4 text-[#78350f]" strokeWidth={2.6} />
+            )}
+          </HayDayMedallionButton>
+
+          <HayDayMedallionButton
+            size="sm"
+            onClick={() => setActiveModal('guide')}
+            ariaLabel="Game Guide"
+          >
+            <HelpCircle className="w-4 h-4 text-[#78350f]" strokeWidth={2.6} />
+          </HayDayMedallionButton>
+        </div>
       </div>
 
       {/* NON-BLOCKING MOBILE PORTRAIT LANDSCAPE PROMPT */}
       {isPortraitMobile && !dismissedPortraitHint && (
-        <div className="absolute top-14 inset-x-3 z-20 rounded-xl border border-amber-500/60 bg-amber-950/90 text-amber-50 px-3 py-2 flex items-center justify-between gap-2 shadow-lg">
+        <div className="absolute top-16 inset-x-3 z-20 rounded-2xl border-2 border-[#f59e0b] bg-[#451a03]/92 text-amber-50 px-3 py-2 flex items-center justify-between gap-2 shadow-xl">
           <div className="flex items-center gap-2 min-w-0 text-[11px] font-bold">
             <RotateCw className="w-4 h-4 text-amber-300 shrink-0" />
             <span className="truncate">หมุนโทรศัพท์แนวนอน เพื่อเล่นเมนูแบบ Hay Day เต็มตา</span>
@@ -1201,7 +1203,7 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
             <button
               type="button"
               onClick={() => void requestLandscapeFullscreen()}
-              className="min-h-[32px] px-2.5 rounded-lg bg-amber-500 text-amber-950 text-[11px] font-black whitespace-nowrap cursor-pointer"
+              className="min-h-[32px] px-2.5 rounded-xl bg-amber-400 text-amber-950 text-[11px] font-black whitespace-nowrap cursor-pointer"
             >
               เต็มจอแนวนอน
             </button>
@@ -1209,7 +1211,7 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
               type="button"
               onClick={() => setDismissedPortraitHint(true)}
               aria-label="Dismiss hint"
-              className="min-w-[32px] min-h-[32px] rounded-lg bg-white/10 flex items-center justify-center cursor-pointer"
+              className="min-w-[32px] min-h-[32px] rounded-xl bg-white/10 flex items-center justify-center cursor-pointer"
             >
               <X className="w-3.5 h-3.5" />
             </button>
@@ -1219,14 +1221,14 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
 
       {/* INLINE RENAME POPOVER */}
       {isEditingFarmName && (
-        <div className="absolute top-14 left-3 z-30 rounded-xl border-2 border-amber-700 bg-[var(--color-card)] p-2.5 shadow-xl flex items-center gap-2">
+        <div className="absolute top-16 left-3 z-30 rounded-2xl border-2 border-[#b45309] bg-[#fffbeb] p-2.5 shadow-xl flex items-center gap-2">
           <input
             type="text"
             maxLength={32}
             value={farmNameDraft}
             onChange={(e) => setFarmNameDraft(e.target.value)}
             placeholder="ตั้งชื่อเมืองฟาร์ม..."
-            className="min-h-[36px] px-2.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-xs text-[var(--color-text-title)]"
+            className="min-h-[36px] px-2.5 rounded-xl border border-[#d97706] bg-white text-xs text-slate-900"
           />
           <button
             type="button"
@@ -1237,129 +1239,111 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
               }
               setIsEditingFarmName(false);
             }}
-            className="min-h-[36px] px-3 rounded-lg bg-emerald-600 text-white text-xs font-bold cursor-pointer"
+            className="min-h-[36px] px-3 rounded-xl bg-emerald-600 text-white text-xs font-bold cursor-pointer"
           >
             บันทึก
           </button>
           <button
             type="button"
             onClick={() => setIsEditingFarmName(false)}
-            className="min-h-[36px] px-2 rounded-lg text-xs text-[var(--color-text-muted)] cursor-pointer"
+            className="min-h-[36px] px-2 rounded-xl text-xs text-slate-600 cursor-pointer"
           >
             ยกเลิก
           </button>
         </div>
       )}
 
-      {/* LEFT FLOATING HAY DAY ICON RAIL */}
-      <div className="absolute left-2 sm:left-3 top-1/2 -translate-y-1/2 z-20 flex flex-col gap-2 pointer-events-auto">
-        <button
-          type="button"
-          onClick={() => setActiveModal('chest')}
-          className="relative min-w-[52px] min-h-[52px] px-2 py-1.5 rounded-2xl border-2 border-emerald-700/50 bg-emerald-50/95 dark:bg-slate-900/92 text-emerald-800 dark:text-emerald-200 shadow-lg flex flex-col items-center justify-center gap-0.5 cursor-pointer active:scale-95 transition"
-        >
-          {disciplineSummary.hasAnythingToClaim && (
-            <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-rose-600 border-2 border-white animate-pulse" />
-          )}
-          <Gift className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-          <span className="text-[10px] font-black whitespace-nowrap">เสบียง</span>
-        </button>
+      {/* LEFT-EDGE HAY DAY FLOATING GLOSSY MEDALLION STACK (Newspaper / Mail / Chat / Farm Book / Bottom-Left Cash Register) */}
+      <div className="absolute left-2 sm:left-3.5 top-20 bottom-3 z-20 flex flex-col justify-between items-start pointer-events-none">
+        <div className="flex flex-col gap-2.5 pointer-events-auto">
+          <HayDayMedallionButton
+            size="md"
+            onClick={() => setActiveModal('chest')}
+            ariaLabel={lang === 'th' ? 'เสบียงวินัยและข่าวฟาร์ม' : 'Daily Supplies'}
+            pulseDot={disciplineSummary.hasAnythingToClaim}
+          >
+            <HayDayNewspaperIcon className="w-7 h-7 sm:w-8 sm:h-8" />
+          </HayDayMedallionButton>
 
-        <button
-          type="button"
-          onClick={() => {
-            setQuizPicked(null);
-            setActiveModal('quiz');
-          }}
-          className="relative min-w-[52px] min-h-[52px] px-2 py-1.5 rounded-2xl border-2 border-sky-700/40 bg-sky-50/95 dark:bg-slate-900/92 text-sky-900 dark:text-sky-200 shadow-lg flex flex-col items-center justify-center gap-0.5 cursor-pointer active:scale-95 transition"
-        >
-          <span className="absolute -top-1.5 -right-1 px-1.5 rounded-full bg-sky-600 text-white text-[9px] font-mono font-bold tabular-nums">
-            {quizUsedToday}/3
-          </span>
-          <BookOpen className="w-5 h-5 text-sky-600 dark:text-sky-400" />
-          <span className="text-[10px] font-black whitespace-nowrap">ควิซน้ำ</span>
-        </button>
+          <HayDayMedallionButton
+            size="md"
+            onClick={() => {
+              setQuizPicked(null);
+              setActiveModal('quiz');
+            }}
+            ariaLabel={lang === 'th' ? 'จดหมายควิซรับน้ำฟรี' : 'Study Quiz Mail'}
+            badgeCount={Math.max(0, 3 - quizUsedToday)}
+          >
+            <HayDayMailIcon className="w-7 h-7 sm:w-8 sm:h-8" />
+          </HayDayMedallionButton>
 
-        <button
-          type="button"
-          onClick={() => setActiveTool((prev) => (prev === 'build' ? 'inspect' : 'build'))}
-          className={`min-w-[52px] min-h-[52px] px-2 py-1.5 rounded-2xl border-2 shadow-lg flex flex-col items-center justify-center gap-0.5 cursor-pointer active:scale-95 transition ${
-            activeTool === 'build'
-              ? 'border-indigo-500 bg-indigo-600 text-white'
-              : 'border-indigo-700/40 bg-indigo-50/95 dark:bg-slate-900/92 text-indigo-900 dark:text-indigo-200'
-          }`}
-        >
-          <Building2 className="w-5 h-5" />
-          <span className="text-[10px] font-black whitespace-nowrap">ก่อสร้าง</span>
-        </button>
+          <HayDayMedallionButton
+            size="md"
+            onClick={() => setActiveModal('visitors')}
+            ariaLabel={lang === 'th' ? 'ออเดอร์ชาวบ้านรายวัน' : 'Villager Orders'}
+            badgeCount={farmState.visitorQueue.length}
+          >
+            <HayDayChatBubbleIcon className="w-7 h-7 sm:w-8 sm:h-8" />
+          </HayDayMedallionButton>
+        </div>
+
+        <div className="flex flex-col gap-2.5 pointer-events-auto">
+          <HayDayMedallionButton
+            size="md"
+            active={activeTool === 'build'}
+            onClick={() => setActiveTool((prev) => (prev === 'build' ? 'inspect' : 'build'))}
+            ariaLabel={lang === 'th' ? 'สมุดก่อสร้างฟาร์ม' : 'Farm Build Book'}
+          >
+            <HayDayFarmBookIcon className="w-7 h-7 sm:w-8 sm:h-8" />
+          </HayDayMedallionButton>
+
+          <HayDayMedallionButton
+            size="lg"
+            onClick={() => {
+              setFocusBuildingId(null);
+              setMarketSubTab('marketplace');
+              setActiveModal('market');
+            }}
+            ariaLabel={lang === 'th' ? 'ตลาดกลางห้องเรียน & ร้านเมล็ดพันธุ์' : 'Classroom Marketplace'}
+            badgeCount={rewardItems.length > 0 ? rewardItems.length : undefined}
+          >
+            <HayDayRegisterIcon className="w-9 h-9 sm:w-10 sm:h-10" />
+          </HayDayMedallionButton>
+        </div>
       </div>
 
-      {/* RIGHT FLOATING HAY DAY ICON RAIL */}
-      <div className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 z-20 flex flex-col gap-2 pointer-events-auto">
-        <button
-          type="button"
-          onClick={() => {
-            setFocusBuildingId(null);
-            setMarketSubTab('marketplace');
-            setActiveModal('market');
-          }}
-          className="relative min-w-[52px] min-h-[52px] px-2 py-1.5 rounded-2xl border-2 border-amber-700/50 bg-amber-50/95 dark:bg-slate-900/92 text-amber-950 dark:text-amber-100 shadow-lg flex flex-col items-center justify-center gap-0.5 cursor-pointer active:scale-95 transition"
-        >
-          {rewardItems.length > 0 && (
-            <span className="absolute -top-1.5 -right-1 px-1.5 rounded-full bg-amber-500 text-white text-[9px] font-mono font-bold tabular-nums">
-              {rewardItems.length}
-            </span>
-          )}
-          <ShoppingBag className="w-5 h-5 text-amber-600 dark:text-amber-400" />
-          <span className="text-[10px] font-black whitespace-nowrap">ตลาดกลาง</span>
-        </button>
-
-        <button
-          type="button"
+      {/* BOTTOM-RIGHT HAY DAY FLOATING GLOSSY MEDALLIONS (Truck Orders + Large Friends Book) */}
+      <div className="absolute right-2 sm:right-3.5 bottom-3 z-20 flex flex-col items-end gap-2.5 pointer-events-auto">
+        <HayDayMedallionButton
+          size="md"
           onClick={() => {
             setFocusBuildingId(null);
             setMarketSubTab('orders');
             setActiveModal('market');
           }}
-          className="relative min-w-[52px] min-h-[52px] px-2 py-1.5 rounded-2xl border-2 border-orange-700/40 bg-orange-50/95 dark:bg-slate-900/92 text-orange-950 dark:text-orange-100 shadow-lg flex flex-col items-center justify-center gap-0.5 cursor-pointer active:scale-95 transition"
+          ariaLabel={lang === 'th' ? 'รถบรรทุกส่งออเดอร์' : 'Delivery Truck Orders'}
+          badgeCount={farmState.marketOrders.length}
         >
-          <span className="absolute -top-1.5 -right-1 px-1.5 rounded-full bg-orange-600 text-white text-[9px] font-mono font-bold tabular-nums">
-            {farmState.marketOrders.length}
-          </span>
-          <Truck className="w-5 h-5 text-orange-600 dark:text-orange-400" />
-          <span className="text-[10px] font-black whitespace-nowrap">ส่งของ</span>
-        </button>
+          <HayDayTruckIcon className="w-7 h-7 sm:w-8 sm:h-8" />
+        </HayDayMedallionButton>
 
-        <button
-          type="button"
-          onClick={() => setActiveModal('visitors')}
-          className="relative min-w-[52px] min-h-[52px] px-2 py-1.5 rounded-2xl border-2 border-rose-700/40 bg-rose-50/95 dark:bg-slate-900/92 text-rose-950 dark:text-rose-100 shadow-lg flex flex-col items-center justify-center gap-0.5 cursor-pointer active:scale-95 transition"
-        >
-          <span className="absolute -top-1.5 -right-1 px-1.5 rounded-full bg-rose-600 text-white text-[9px] font-mono font-bold tabular-nums">
-            {farmState.visitorQueue.length}
-          </span>
-          <MessageCircleHeart className="w-5 h-5 text-rose-600 dark:text-rose-400" />
-          <span className="text-[10px] font-black whitespace-nowrap">ชาวบ้าน</span>
-        </button>
-
-        <button
-          type="button"
+        <HayDayMedallionButton
+          size="lg"
           onClick={() => {
             setVisitingNeighbor(null);
             setActiveModal('town');
           }}
-          className="relative min-w-[52px] min-h-[52px] px-2 py-1.5 rounded-2xl border-2 border-teal-700/40 bg-teal-50/95 dark:bg-slate-900/92 text-teal-950 dark:text-teal-100 shadow-lg flex flex-col items-center justify-center gap-0.5 cursor-pointer active:scale-95 transition"
+          ariaLabel={lang === 'th' ? 'เพื่อนบ้านโรงเรียน' : 'School Neighbors'}
         >
-          <Users className="w-5 h-5 text-teal-600 dark:text-teal-400" />
-          <span className="text-[10px] font-black whitespace-nowrap">เพื่อน</span>
-        </button>
+          <HayDayFriendsIcon className="w-9 h-9 sm:w-10 sm:h-10" />
+        </HayDayMedallionButton>
       </div>
 
       {/* FLOATING COMPACT SELECTED PLOT POPOVER */}
       {selectedTile && activeTool !== 'plant' && activeTool !== 'build' && (
-        <div className="absolute bottom-[74px] right-2 sm:right-3 z-20 w-[260px] rounded-2xl border-2 border-amber-800/40 bg-[var(--color-card)]/96 backdrop-blur-md p-2.5 shadow-xl space-y-2 pointer-events-auto">
+        <div className="absolute bottom-[78px] right-20 z-20 w-[256px] rounded-2xl border-2 border-[#78350f] bg-[#fffbeb]/98 backdrop-blur-md p-2.5 shadow-[0_5px_0_#78350f,0_10px_20px_rgba(0,0,0,0.45)] space-y-2 pointer-events-auto">
           <div className="flex items-center justify-between gap-2">
-            <span className="text-[11px] font-black text-[var(--color-text-title)] truncate">
+            <span className="text-[11px] font-black text-[#451a03] truncate">
               {!selectedTile.unlocked
                 ? `แปลง #${selectedTile.index + 1} (ล็อก)`
                 : selectedTile.kind === 'crop' && selectedTile.cropId
@@ -1378,7 +1362,7 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
               type="button"
               onClick={() => setSelectedTileIndex(null)}
               aria-label="Close plot inspector"
-              className="w-6 h-6 rounded-lg bg-[var(--color-card-subtle)] text-[var(--color-text-muted)] flex items-center justify-center cursor-pointer shrink-0"
+              className="w-6 h-6 rounded-full bg-amber-200 text-[#78350f] flex items-center justify-center cursor-pointer shrink-0"
             >
               <X className="w-3.5 h-3.5" />
             </button>
@@ -1386,7 +1370,7 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
 
           {selectedTile.kind === 'crop' && selectedTile.cropId && (
             <div className="space-y-1.5">
-              <div className="flex items-center justify-between text-[11px] text-[var(--color-text-body)] tabular-nums">
+              <div className="flex items-center justify-between text-[11px] text-[#78350f] tabular-nums">
                 <span>{getGrowthStageLabel(selectedTile.growthProgress || 0, CROP_MAP[selectedTile.cropId].watersNeeded, lang)}</span>
                 <span className="font-mono font-bold">
                   {selectedTile.growthProgress || 0}/{CROP_MAP[selectedTile.cropId].watersNeeded}
@@ -1397,21 +1381,21 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
                   <button
                     type="button"
                     onClick={() => executeTileAction(selectedTile.index, 'water')}
-                    className="min-h-[34px] px-1.5 rounded-lg bg-sky-600 text-white text-[10px] font-bold whitespace-nowrap cursor-pointer"
+                    className="min-h-[34px] px-1.5 rounded-xl bg-sky-600 text-white text-[10px] font-bold whitespace-nowrap cursor-pointer shadow-xs"
                   >
                     รดน้ำ 💧
                   </button>
                   <button
                     type="button"
                     onClick={() => executeTileAction(selectedTile.index, 'daily_fertilize')}
-                    className="min-h-[34px] px-1.5 rounded-lg bg-emerald-600 text-white text-[10px] font-bold whitespace-nowrap cursor-pointer"
+                    className="min-h-[34px] px-1.5 rounded-xl bg-emerald-600 text-white text-[10px] font-bold whitespace-nowrap cursor-pointer shadow-xs"
                   >
                     ปุ๋ยวัน 🌱
                   </button>
                   <button
                     type="button"
                     onClick={() => executeTileAction(selectedTile.index, 'fertilize')}
-                    className="min-h-[34px] px-1.5 rounded-lg bg-amber-500 text-white text-[10px] font-bold whitespace-nowrap cursor-pointer"
+                    className="min-h-[34px] px-1.5 rounded-xl bg-amber-500 text-white text-[10px] font-bold whitespace-nowrap cursor-pointer shadow-xs"
                   >
                     ปุ๋ยทอง ✨
                   </button>
@@ -1420,7 +1404,7 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
                 <button
                   type="button"
                   onClick={() => executeTileAction(selectedTile.index, 'harvest')}
-                  className="w-full min-h-[36px] rounded-xl bg-emerald-600 text-white text-xs font-bold cursor-pointer"
+                  className="w-full min-h-[36px] rounded-xl bg-emerald-600 text-white text-xs font-bold cursor-pointer shadow-xs"
                 >
                   เก็บเกี่ยวเข้ายุ้งฉาง
                 </button>
@@ -1475,7 +1459,7 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
                       setMarketSubTab('craft');
                       setActiveModal('market');
                     }}
-                    className="flex-1 min-h-[34px] px-2.5 rounded-lg bg-emerald-600 text-white text-[11px] font-bold inline-flex items-center justify-center gap-1 whitespace-nowrap cursor-pointer"
+                    className="flex-1 min-h-[34px] px-2.5 rounded-xl bg-emerald-600 text-white text-[11px] font-bold inline-flex items-center justify-center gap-1 whitespace-nowrap cursor-pointer"
                   >
                     <ChefHat className="w-3.5 h-3.5" />
                     <span>แปรรูป</span>
@@ -1485,7 +1469,7 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
                   <button
                     type="button"
                     onClick={() => handleUpgradeBuilding(selectedTile.index)}
-                    className="flex-1 min-h-[34px] px-2.5 rounded-lg bg-indigo-600 text-white text-[11px] font-bold inline-flex items-center justify-center gap-1 whitespace-nowrap cursor-pointer"
+                    className="flex-1 min-h-[34px] px-2.5 rounded-xl bg-indigo-600 text-white text-[11px] font-bold inline-flex items-center justify-center gap-1 whitespace-nowrap cursor-pointer"
                   >
                     <ArrowUpCircle className="w-3.5 h-3.5" />
                     <span>Lv.{curLv + 1} ({upgCost.coinCost}🪙)</span>
@@ -1495,7 +1479,7 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
                   type="button"
                   onClick={() => handleRemoveBuilding(selectedTile.index)}
                   aria-label="Remove building"
-                  className="min-h-[34px] min-w-[34px] rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-rose-600 flex items-center justify-center cursor-pointer"
+                  className="min-h-[34px] min-w-[34px] rounded-xl border border-amber-300 bg-white text-rose-600 flex items-center justify-center cursor-pointer"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
@@ -1516,11 +1500,11 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
         </div>
       )}
 
-      {/* BOTTOM FLOATING HAY DAY ACTION DOCK & POP-UP DRAWERS */}
-      <div className="absolute bottom-2 inset-x-2 z-20 flex flex-col items-center gap-1.5 pointer-events-none">
+      {/* BOTTOM-CENTER HAY DAY TIMBER TOOL DOCK & POP-UP SEED/BUILD DRAWERS */}
+      <div className="absolute bottom-2.5 inset-x-16 sm:inset-x-24 z-20 flex flex-col items-center gap-1.5 pointer-events-none">
         {/* Contextual Seed Drawer */}
         {activeTool === 'plant' && (
-          <div className="pointer-events-auto max-w-[94vw] rounded-2xl border-2 border-emerald-700/40 bg-[var(--color-card)]/96 backdrop-blur-md shadow-xl p-2 flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+          <div className="pointer-events-auto max-w-full rounded-2xl border-2 border-[#78350f] bg-[#fffbeb]/96 backdrop-blur-md shadow-[0_5px_0_#78350f,0_8px_16px_rgba(0,0,0,0.4)] p-2 flex items-center gap-1.5 overflow-x-auto no-scrollbar">
             {CROP_CATALOG.map((crop) => {
               const owned = farmState.seeds[crop.id] || 0;
               const unlocked = isCropUnlocked(crop.id, farmState, disciplineSummary.submittedHomeworkCount);
@@ -1531,18 +1515,18 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
                   type="button"
                   disabled={!unlocked}
                   onClick={() => setSelectedCropId(crop.id)}
-                  className={`min-h-[42px] px-2.5 py-1 rounded-xl border text-left shrink-0 transition cursor-pointer disabled:opacity-45 disabled:cursor-not-allowed ${
+                  className={`min-h-[42px] px-2.5 py-1 rounded-xl border-2 text-left shrink-0 transition cursor-pointer disabled:opacity-45 disabled:cursor-not-allowed ${
                     selected
-                      ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-900 dark:text-emerald-100'
-                      : 'border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-body)]'
+                      ? 'border-emerald-600 bg-emerald-100 text-emerald-950'
+                      : 'border-amber-300 bg-white text-[#451a03]'
                   }`}
                 >
-                  <div className="text-[11px] font-bold flex items-center gap-1.5 whitespace-nowrap">
+                  <div className="text-[11px] font-black flex items-center gap-1.5 whitespace-nowrap">
                     <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: crop.accentColor }} />
                     <span>{lang === 'th' ? crop.nameTh : crop.nameEn}</span>
                     <span className="font-mono tabular-nums">×{owned}</span>
                   </div>
-                  <div className="text-[10px] text-[var(--color-text-muted)] whitespace-nowrap tabular-nums">
+                  <div className="text-[10px] font-bold text-[#78350f] whitespace-nowrap tabular-nums">
                     {unlocked ? `💧${crop.watersNeeded} · ${crop.sellPrice}🪙` : `Lv.${crop.unlockTownLevel}`}
                   </div>
                 </button>
@@ -1553,7 +1537,7 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
 
         {/* Contextual Building Drawer */}
         {activeTool === 'build' && (
-          <div className="pointer-events-auto max-w-[94vw] rounded-2xl border-2 border-indigo-700/40 bg-[var(--color-card)]/96 backdrop-blur-md shadow-xl p-2 space-y-1.5">
+          <div className="pointer-events-auto max-w-full rounded-2xl border-2 border-[#78350f] bg-[#fffbeb]/96 backdrop-blur-md shadow-[0_5px_0_#78350f,0_8px_16px_rgba(0,0,0,0.4)] p-2 space-y-1.5">
             <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
               {(
                 [
@@ -1567,10 +1551,10 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
                   key={cat.id}
                   type="button"
                   onClick={() => setBuildCategoryFilter(cat.id)}
-                  className={`px-2.5 py-1 rounded-lg text-[10px] font-bold whitespace-nowrap shrink-0 cursor-pointer ${
+                  className={`px-2.5 py-1 rounded-xl text-[10px] font-black whitespace-nowrap shrink-0 cursor-pointer ${
                     buildCategoryFilter === cat.id
-                      ? 'bg-indigo-600 text-white'
-                      : 'bg-[var(--color-card-subtle)] text-[var(--color-text-muted)]'
+                      ? 'bg-[#b45309] text-white'
+                      : 'bg-amber-100 text-[#78350f]'
                   }`}
                 >
                   {cat.label}
@@ -1587,16 +1571,16 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
                     type="button"
                     disabled={!unlocked}
                     onClick={() => setSelectedBuildingId(b.id)}
-                    className={`min-h-[42px] px-2.5 py-1 rounded-xl border text-left shrink-0 transition cursor-pointer disabled:opacity-45 disabled:cursor-not-allowed ${
+                    className={`min-h-[42px] px-2.5 py-1 rounded-xl border-2 text-left shrink-0 transition cursor-pointer disabled:opacity-45 disabled:cursor-not-allowed ${
                       selected
-                        ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/60 text-indigo-900 dark:text-indigo-100'
-                        : 'border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-body)]'
+                        ? 'border-amber-600 bg-amber-100 text-[#451a03]'
+                        : 'border-amber-300 bg-white text-[#451a03]'
                     }`}
                   >
-                    <div className="text-[11px] font-bold whitespace-nowrap">
+                    <div className="text-[11px] font-black whitespace-nowrap">
                       {lang === 'th' ? b.nameTh : b.nameEn}
                     </div>
-                    <div className="text-[10px] text-[var(--color-text-muted)] tabular-nums whitespace-nowrap">
+                    <div className="text-[10px] font-bold text-[#78350f] tabular-nums whitespace-nowrap">
                       {!unlocked ? `Lv.${b.unlockTownLevel}` : `${b.coinCost}🪙 · ${b.starCost}★`}
                     </div>
                   </button>
@@ -1608,14 +1592,14 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
 
         {/* Contextual 8x8 Expand Bar */}
         {activeTool === 'unlock' && gridSize === 6 && (
-          <div className="pointer-events-auto rounded-2xl border-2 border-violet-600/50 bg-[var(--color-card)]/96 backdrop-blur-md shadow-xl px-3 py-2 flex items-center gap-3">
-            <span className="text-xs font-bold text-[var(--color-text-title)] whitespace-nowrap">
+          <div className="pointer-events-auto rounded-2xl border-2 border-[#78350f] bg-[#fffbeb]/96 backdrop-blur-md shadow-[0_4px_0_#78350f] px-3 py-1.5 flex items-center gap-3">
+            <span className="text-xs font-black text-[#451a03] whitespace-nowrap">
               ขยายพื้นที่ฟาร์ม 6×6 → 8×8
             </span>
             <button
               type="button"
               onClick={handleExpandTo8x8}
-              className="min-h-[36px] px-3 rounded-xl bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold inline-flex items-center gap-1 whitespace-nowrap cursor-pointer"
+              className="min-h-[34px] px-3 rounded-xl bg-violet-600 hover:bg-violet-700 text-white text-xs font-black inline-flex items-center gap-1 whitespace-nowrap cursor-pointer"
             >
               <Grid2X2Plus className="w-3.5 h-3.5" />
               <span>ขยาย (4 ★)</span>
@@ -1623,30 +1607,29 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
           </div>
         )}
 
-        {/* Horizontal Bottom Hay Day Tool Bar */}
-        <div className="pointer-events-auto max-w-[96vw] rounded-2xl border-2 border-amber-800/40 bg-amber-50/95 dark:bg-slate-900/92 backdrop-blur-md shadow-xl px-2 py-1.5 flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+        {/* Hay Day Carved Wooden Tool Tray */}
+        <div className="pointer-events-auto max-w-full rounded-2xl border-2 border-[#78350f] bg-gradient-to-b from-[#fffbeb] via-[#fef3c7] to-[#fde68a] shadow-[0_5px_0_#78350f,0_8px_18px_rgba(0,0,0,0.42)] px-2 py-1.5 flex items-center gap-1 overflow-x-auto no-scrollbar">
           {toolButtons.map((tool) => {
-            const Icon = tool.icon;
             const isActive = activeTool === tool.id;
             return (
               <button
                 key={tool.id}
                 type="button"
                 onClick={() => setActiveTool(tool.id)}
-                className={`min-h-[42px] px-2.5 py-1.5 rounded-xl border text-[11px] font-black whitespace-nowrap shrink-0 inline-flex items-center gap-1 transition cursor-pointer ${
+                className={`relative min-h-[44px] px-2 py-1 rounded-xl border-2 text-[10px] font-black whitespace-nowrap shrink-0 flex flex-col items-center justify-center gap-0.5 transition cursor-pointer ${
                   isActive
-                    ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
-                    : 'bg-white/80 dark:bg-slate-800/85 border-amber-900/15 dark:border-slate-700 text-[var(--color-text-body)]'
+                    ? 'bg-gradient-to-b from-[#4ade80] to-[#16a34a] text-white border-[#14532d] shadow-inner -translate-y-0.5'
+                    : 'bg-white/90 border-amber-300/90 text-[#451a03] hover:bg-white'
                 }`}
               >
-                <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-white' : tool.toneClass}`} />
+                <HayDayToolSprite tool={tool.id} className="w-5 h-5" />
                 <span>{lang === 'th' ? tool.labelTh : tool.labelEn}</span>
                 {tool.badge !== undefined && (
                   <span
-                    className={`px-1.5 py-0.2 rounded-md text-[10px] font-mono tabular-nums ${
+                    className={`absolute -top-1 -right-1 min-w-[16px] h-[16px] px-1 rounded-full text-[9px] font-mono font-black flex items-center justify-center tabular-nums border ${
                       isActive
-                        ? 'bg-white/25 text-white'
-                        : 'bg-amber-100 dark:bg-slate-700 text-[var(--color-text-title)]'
+                        ? 'bg-amber-400 text-amber-950 border-white'
+                        : 'bg-[#e11d48] text-white border-white'
                     }`}
                   >
                     {tool.badge}
