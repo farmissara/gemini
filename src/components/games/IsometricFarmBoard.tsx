@@ -274,6 +274,71 @@ const renderCropArt = (
           </g>
         </g>
       );
+    case 'morning_glory':
+      return (
+        <g transform={`translate(${cx}, ${cy}) scale(${scale})`}>
+          <g className="farm-harvest-bounce">
+            <path d="M-7 3 L-4 -17 M0 4 L0 -21 M7 3 L5 -16" stroke="#16a34a" strokeWidth="2.5" strokeLinecap="round" />
+            <path d="M-4 -15 L-11 -9 L-3 -7 Z" fill="#4ade80" stroke="#14532d" strokeWidth="1" />
+            <path d="M0 -20 L7 -14 L1 -11 Z" fill="#22c55e" stroke="#14532d" strokeWidth="1" />
+            <path d="M5 -15 L12 -9 L4 -7 Z" fill="#86efac" stroke="#14532d" strokeWidth="1" />
+          </g>
+        </g>
+      );
+    case 'chili':
+      return (
+        <g transform={`translate(${cx}, ${cy}) scale(${scale})`}>
+          <g className="farm-harvest-bounce">
+            <ellipse cx="0" cy="-9" rx="14" ry="10" fill="#15803d" stroke="#14532d" strokeWidth="1.2" />
+            <path d="M-7 -9 C-3 -9 -3 -1 -6 1" stroke="#ef4444" strokeWidth="3.5" strokeLinecap="round" fill="none" />
+            <path d="M0 -13 C4 -13 4 -5 1 -3" stroke="#dc2626" strokeWidth="3.8" strokeLinecap="round" fill="none" />
+            <path d="M7 -9 C11 -9 11 -1 8 1" stroke="#ef4444" strokeWidth="3.5" strokeLinecap="round" fill="none" />
+          </g>
+        </g>
+      );
+    case 'holy_basil':
+      return (
+        <g transform={`translate(${cx}, ${cy}) scale(${scale})`}>
+          <g className="farm-harvest-bounce">
+            <ellipse cx="-7" cy="-6" rx="8" ry="6" fill="#16a34a" stroke="#14532d" strokeWidth="1.1" />
+            <ellipse cx="7" cy="-6" rx="8" ry="6" fill="#22c55e" stroke="#14532d" strokeWidth="1.1" />
+            <ellipse cx="0" cy="-12" rx="9" ry="7" fill="#4ade80" stroke="#14532d" strokeWidth="1.1" />
+            <line x1="0" y1="-12" x2="0" y2="-22" stroke="#9333ea" strokeWidth="2.5" strokeLinecap="round" />
+            <circle cx="0" cy="-23" r="2.2" fill="#c084fc" />
+          </g>
+        </g>
+      );
+    case 'banana':
+      return (
+        <g transform={`translate(${cx}, ${cy}) scale(${scale})`}>
+          <g className="farm-harvest-bounce">
+            <rect x="-2" y="-14" width="4" height="17" rx="1.5" fill="#65a30d" stroke="#365314" strokeWidth="1" />
+            <path d="M0 -14 C-11 -20 -16 -13 -12 -8" stroke="#22c55e" strokeWidth="3.5" fill="none" strokeLinecap="round" />
+            <path d="M0 -14 C11 -20 16 -13 12 -8" stroke="#16a34a" strokeWidth="3.5" fill="none" strokeLinecap="round" />
+            <path d="M-7 -7 C-4 -2 4 -2 7 -7" stroke="#fde047" strokeWidth="4" fill="none" strokeLinecap="round" />
+          </g>
+        </g>
+      );
+    case 'watermelon':
+      return (
+        <g transform={`translate(${cx}, ${cy}) scale(${scale})`}>
+          <g className="farm-harvest-bounce">
+            <ellipse cx="0" cy="-1" rx="15" ry="5" fill="#22c55e" opacity="0.65" />
+            <ellipse cx="0" cy="-8" rx="11.5" ry="9" fill="#16a34a" stroke="#14532d" strokeWidth="1.3" />
+            <path d="M-5 -16 Q-2 -8 -5 0 M0 -17 Q3 -8 0 1 M5 -16 Q8 -8 5 0" stroke="#14532d" strokeWidth="1.5" fill="none" />
+          </g>
+        </g>
+      );
+    case 'pineapple':
+      return (
+        <g transform={`translate(${cx}, ${cy}) scale(${scale})`}>
+          <g className="farm-harvest-bounce">
+            <path d="M-5 -14 L-8 -24 L0 -18 L8 -24 L5 -14 Z" fill="#16a34a" stroke="#14532d" strokeWidth="1.1" />
+            <ellipse cx="0" cy="-7" rx="8.5" ry="9.5" fill="#facc15" stroke="#a16207" strokeWidth="1.3" />
+            <path d="M-5 -12 L5 -2 M5 -12 L-5 -2" stroke="#ca8a04" strokeWidth="1" />
+          </g>
+        </g>
+      );
   }
 };
 
@@ -514,6 +579,39 @@ const renderBuildingArt = (
           <ellipse cx="9" cy="1" rx="6.5" ry="3.2" fill="#b45309" stroke="#78350f" strokeWidth="1" />
           <ellipse cx="1" cy="-6" rx="7" ry="3.2" fill="#f59e0b" stroke="#78350f" strokeWidth="1" />
           <ellipse cx="-2" cy="5" rx="6.5" ry="3" fill="#d97706" stroke="#78350f" strokeWidth="1" />
+        </g>
+      );
+    case 'fishery_pier':
+      return (
+        <g transform={`translate(${cx}, ${cy}) scale(${scale})`}>
+          <ellipse cx="0" cy="1" rx="23" ry="11" fill="#0284c7" stroke="#0369a1" strokeWidth="1.6" />
+          <polygon points="-20,-4 2,-14 20,-4 -2,6" fill="#b45309" stroke="#78350f" strokeWidth="1.3" />
+          <line x1="-14" y1="-5" x2="-14" y2="-21" stroke="#78350f" strokeWidth="2.2" />
+          <line x1="14" y1="-5" x2="14" y2="-21" stroke="#78350f" strokeWidth="2.2" />
+          <polygon points="-18,-19 0,-31 18,-19 0,-11" fill="#0ea5e9" stroke={roofTrim || '#0c4a6e'} strokeWidth={roofTrim ? 2 : 1.3} />
+          <g className="farm-animal-bob">
+            <ellipse cx="9" cy="5" rx="4.2" ry="2" fill="#fb923c" />
+          </g>
+        </g>
+      );
+    case 'craft_studio':
+      return (
+        <g transform={`translate(${cx}, ${cy}) scale(${scale})`}>
+          <polygon points="-20,0 0,9 0,-13 -20,-22" fill="#e0e7ff" stroke="#3730a3" strokeWidth="1.3" />
+          <polygon points="0,9 20,0 20,-22 0,-13" fill="#c7d2fe" stroke="#3730a3" strokeWidth="1.3" />
+          <polygon points="-23,-20 0,-35 23,-20 0,-9" fill="#4f46e5" stroke={roofTrim || '#312e81'} strokeWidth={roofTrim ? 2 : 1.4} />
+          <circle cx="-8" cy="-5" r="3.5" fill="#ec4899" />
+          <circle cx="9" cy="-4" r="3.5" fill="#fbbf24" />
+        </g>
+      );
+    case 'digital_hub':
+      return (
+        <g transform={`translate(${cx}, ${cy}) scale(${scale})`}>
+          <polygon points="-21,0 0,10 0,-14 -21,-24" fill="#faf5ff" stroke="#6b21a8" strokeWidth="1.3" />
+          <polygon points="0,10 21,0 21,-24 0,-14" fill="#f3e8ff" stroke="#6b21a8" strokeWidth="1.3" />
+          <polygon points="-24,-22 0,-37 24,-22 0,-10" fill="#7c3aed" stroke={roofTrim || '#4c1d95'} strokeWidth={roofTrim ? 2 : 1.4} />
+          <rect x="6" y="-14" width="10" height="7" rx="1.5" fill="#38bdf8" stroke="#0369a1" strokeWidth="1" />
+          <circle cx="0" cy="-39" r="3.5" fill="#facc15" />
         </g>
       );
     default:
@@ -1006,6 +1104,7 @@ export const IsometricFarmBoard: React.FC<IsometricFarmBoardProps> = ({
             role="button"
             tabIndex={0}
             aria-label={lang === 'th' ? 'วงล้อนำโชคประจำวัน' : 'Daily Lucky Spin Wheel'}
+            onPointerDown={(e) => e.stopPropagation()}
             onClick={() => onOpenWheel()}
             onKeyDown={(e) => {
               if (e.key === 'Enter' || e.key === ' ') {

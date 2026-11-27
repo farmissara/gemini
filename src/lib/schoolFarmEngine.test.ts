@@ -4,11 +4,15 @@ import {
   applyAttendanceStreakGoldenBonus,
   applyDailyFertilizerTile,
   applyQuizBoostReward,
+  buyCapitalToken,
   buyDailyDirtBargain,
   buyFromNeighborRoadsideShop,
   buySeedPack,
   calculateTownProsperity,
+  CAPITAL_TOKEN_BUY_COST,
+  CAREER_CATALOG,
   claimBeginnerPracticePack,
+  claimCareerStartupGrant,
   claimDisciplineSupplies,
   claimFarmAchievement,
   clearWeedOnTile,
@@ -41,8 +45,11 @@ import {
   normalizeFarmState,
   plantCropOnTile,
   sellCropFromBarn,
+  EXTRA_LUCKY_WHEEL_COST,
   speedUpProductionJob,
   spinDailyLuckyWheel,
+  spinExtraLuckyWheel,
+  switchCareerPath,
   syncBehaviorWeedsOntoFarm,
   tillPlotTile,
   unlockPlotTile,
@@ -296,10 +303,11 @@ describe('schoolFarmEngine', () => {
     state = sold.state;
     assert.equal(state.barn.corn, 0);
 
+    const tomatoSeedsBefore = state.seeds.tomato;
     const bought = buySeedPack(state, 'tomato', 1);
     assert.equal(bought.ok, true);
     state = bought.state;
-    assert.equal(state.seeds.tomato, 3);
+    assert.equal(state.seeds.tomato, tomatoSeedsBefore + 1);
   });
 
   it('spawns demerit weeds, clears them cleanly, unlocks plots, and constructs buildings', () => {
@@ -466,7 +474,7 @@ describe('schoolFarmEngine', () => {
     assert.equal(state.tiles[8].buildingId, 'farm_cottage');
     assert.equal(state.tiles[9].buildingId, 'chicken_coop');
     assert.equal(state.tiles[19].buildingId, 'wooden_fence');
-    assert.equal(state.goods.egg, 1);
+    assert.equal(state.goods.egg, 2);
     assert.ok(state.visitorQueue.length >= 2);
 
     // Harvest starter corn at index 14, then craft Fresh Egg at starter chicken_coop
@@ -479,7 +487,7 @@ describe('schoolFarmEngine', () => {
     assert.equal(craftedEgg.ok, true);
     state = craftedEgg.state;
     assert.equal(state.barn.corn, 0);
-    assert.equal(state.goods.egg, 2);
+    assert.equal(state.goods.egg, 3);
 
     // Compound order check (tomato + egg)
     state = {
@@ -491,7 +499,7 @@ describe('schoolFarmEngine', () => {
     const ordDelivered = fulfillMarketOrder(state, compoundOrder.id);
     assert.equal(ordDelivered.ok, true);
     state = ordDelivered.state;
-    assert.equal(state.goods.egg, 1);
+    assert.equal(state.goods.egg, 2);
 
     // Serve NPC visitor & dismiss another
     const cornVisitor = state.visitorQueue.find((v) => v.itemId === 'corn');
@@ -509,7 +517,7 @@ describe('schoolFarmEngine', () => {
     const listed = listItemInRoadsideShop(state, 'product', 'egg', 1, 60);
     assert.equal(listed.ok, true);
     state = listed.state;
-    assert.equal(state.goods.egg, 0);
+    assert.equal(state.goods.egg, 1);
     assert.equal(state.roadsideShop.length, 1);
 
     const buyer = createInitialFarmState({
@@ -570,16 +578,17 @@ describe('schoolFarmEngine', () => {
     const streak6 = computeStudentPresentStreak(sixDaysRecords, ids);
     assert.equal(streak6, 6);
 
+    const fertBefore = state.fertilizer;
     const grantedBonus = applyAttendanceStreakGoldenBonus(state, streak6, '2026-11-27');
     assert.equal(grantedBonus.granted, true);
     state = grantedBonus.state;
-    assert.equal(state.fertilizer, 4);
+    assert.equal(state.fertilizer, fertBefore + 2);
     assert.equal(state.goldenFertilizerStatus?.speedMultiplier, 2);
 
     // Idempotent on the same date
     const dupBonus = applyAttendanceStreakGoldenBonus(state, streak6, '2026-11-27');
     assert.equal(dupBonus.granted, false);
-    assert.equal(dupBonus.state.fertilizer, 4);
+    assert.equal(dupBonus.state.fertilizer, fertBefore + 2);
 
     // Watering a newly planted crop with 2x Golden Fertilizer advances growthProgress by +2 in 1 water
     const planted = plantCropOnTile(state, 7, 'corn'); // corn needs 2 waters
@@ -727,6 +736,13 @@ describe('schoolFarmEngine', () => {
     // Duplicate same-day spin is blocked
     const spinDup = spinDailyLuckyWheel(state, today, 0);
     assert.equal(spinDup.ok, false);
+
+    // Extra same-day spin succeeds using coins (slot 0 = +80 coins, net +20)
+    const coinsBeforeExtra = state.coins;
+    const extraSpin = spinExtraLuckyWheel(state, 0);
+    assert.equal(extraSpin.ok, true);
+    assert.equal(extraSpin.state.coins, coinsBeforeExtra - EXTRA_LUCKY_WHEEL_COST + 80);
+    state = extraSpin.state;
 
     // Next day spin succeeds (slot 2 = +2 fertilizer)
     const spinNext = spinDailyLuckyWheel(state, '2026-11-28', 2);
@@ -894,6 +910,92 @@ describe('schoolFarmEngine', () => {
 
     const dupPack = claimBeginnerPracticePack(packed.state);
     assert.equal(dupPack.ok, false);
+  });
+
+  it('supports new vegetables & fruits planting, fishery production chain, and diverse careers with startup capital tokens', () => {
+    let state = createInitialFarmState({
+      schoolId: 'sch-1',
+      userId: 'usr-career-fish',
+      ownerName: 'ปั้นฝัน',
+    });
+
+    // Starter includes capitalTokens & Lv.1 new veggies/fruits are stocked & plantable
+    assert.ok((state.capitalTokens ?? 0) >= 3);
+    assert.equal(CAREER_CATALOG.length, 6);
+    const lv1NewCrops = ['morning_glory', 'chili', 'holy_basil', 'banana'] as const;
+    for (const cropId of lv1NewCrops) {
+      assert.equal(isCropUnlocked(cropId, state, 0), true);
+      assert.ok((state.seeds[cropId] ?? 0) >= 3);
+    }
+    const lv2State = { ...state, farmXp: 400 };
+    assert.equal(isCropUnlocked('watermelon', lv2State, 0), true);
+    assert.equal(isCropUnlocked('pineapple', lv2State, 0), true);
+
+    // Plant and grow morning_glory on an empty unlocked tile
+    const emptyTilledIdx = state.tiles.findIndex((t) => t.kind === 'empty' && t.unlocked);
+    assert.ok(emptyTilledIdx >= 0);
+    const planted = plantCropOnTile(state, emptyTilledIdx, 'morning_glory');
+    assert.equal(planted.ok, true);
+    state = planted.state;
+    const watered = waterTile(state, emptyTilledIdx);
+    assert.equal(watered.ok, true);
+    state = watered.state;
+    const fed = fertilizeTile(state, emptyTilledIdx);
+    assert.equal(fed.ok, true);
+    state = fed.state;
+
+    // Fishery chain: build lotus_fish_pond & fishery_pier on empty unlocked land tiles
+    const emptyLandIdx1 = state.tiles.findIndex((t) => t.kind === 'empty' && t.unlocked);
+    assert.ok(emptyLandIdx1 >= 0);
+    state = { ...state, farmXp: 400, townStars: 20, coins: 2000 };
+    const builtPond = constructBuildingOnTile(state, emptyLandIdx1, 'lotus_fish_pond');
+    assert.equal(builtPond.ok, true);
+    state = builtPond.state;
+
+    const emptyLandIdx2 = state.tiles.findIndex((t) => t.kind === 'empty' && t.unlocked);
+    assert.ok(emptyLandIdx2 >= 0);
+    const builtPier = constructBuildingOnTile(state, emptyLandIdx2, 'fishery_pier');
+    assert.equal(builtPier.ok, true);
+    state = builtPier.state;
+
+    state = { ...state, barn: { ...state.barn, corn: 2, morning_glory: 2 } };
+    const t0 = 1_700_000_500_000;
+    const queuedTilapia = enqueueProductionJob(state, 'tilapia_fish', t0);
+    assert.equal(queuedTilapia.ok, true);
+    assert.ok(queuedTilapia.job);
+    state = collectReadyProductionJob(queuedTilapia.state, queuedTilapia.job.id, t0 + 30_000).state;
+    assert.ok((state.goods.tilapia_fish ?? 0) >= 1);
+
+    const queuedGrilled = enqueueProductionJob(state, 'grilled_fish', t0 + 30_000);
+    assert.equal(queuedGrilled.ok, true);
+    assert.ok(queuedGrilled.job);
+    state = collectReadyProductionJob(queuedGrilled.state, queuedGrilled.job.id, t0 + 60_000).state;
+    assert.ok((state.goods.grilled_fish ?? 0) >= 1);
+
+    // Career switching & startup capital token grant workflow
+    state = switchCareerPath(state, 'fishery_master');
+    assert.equal(state.activeCareerId, 'fishery_master');
+
+    const tokensBefore = state.capitalTokens ?? 0;
+    const coinsBefore = state.coins;
+    const granted = claimCareerStartupGrant(state, 'fishery_master');
+    assert.equal(granted.ok, true);
+    assert.equal(granted.state.capitalTokens, tokensBefore - 1);
+    assert.ok(granted.state.coins > coinsBefore);
+    assert.ok(granted.state.claimedCareerGrants?.includes('fishery_master'));
+    state = granted.state;
+
+    // Duplicate grant for same career is blocked
+    const dupGrant = claimCareerStartupGrant(state, 'fishery_master');
+    assert.equal(dupGrant.ok, false);
+
+    // Buying extra capital token deducts coins and increments capitalTokens
+    const coinsBeforeBuy = state.coins;
+    const tokensBeforeBuy = state.capitalTokens ?? 0;
+    const boughtToken = buyCapitalToken(state);
+    assert.equal(boughtToken.ok, true);
+    assert.equal(boughtToken.state.coins, coinsBeforeBuy - CAPITAL_TOKEN_BUY_COST);
+    assert.equal(boughtToken.state.capitalTokens, tokensBeforeBuy + 1);
   });
 });
 

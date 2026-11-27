@@ -241,15 +241,15 @@ export const MobileGamesHubTab: React.FC<MobileGamesHubTabProps> = ({
             </div>
             <div className="min-w-0">
               <p className="text-[10px] font-mono font-bold text-emerald-300 uppercase tracking-wider">
-                School Farm & Town
+                Career Valley & Farm
               </p>
               <h3 className="text-sm font-black text-white truncate">
-                {lang === 'th' ? 'ฟาร์มโรงเรียนแสนสนุก (ปลูก & สร้างเมือง)' : 'School Farm & Town'}
+                {lang === 'th' ? 'เมืองอาชีพแสนสนุก (เกษตร ประมง & กิจการ)' : 'Career Valley & Farm'}
               </h3>
               <p className="text-[11px] text-zinc-400 truncate">
                 {lang === 'th'
-                  ? 'เช็กชื่อรับน้ำ · ส่งการบ้านรับเมล็ด · ความดีสร้างเมือง'
-                  : 'Attendance water · Homework seeds · Merit stars'}
+                  ? 'ปลูกผัก ประมง เลือกสายอาชีพ & รับทุนสร้างกิจการ'
+                  : 'Crops, fishery, careers & startup capital grants'}
               </p>
             </div>
           </div>

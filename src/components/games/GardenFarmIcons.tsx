@@ -195,6 +195,26 @@ export const GardenGiftBasketIcon: React.FC<{ className?: string }> = ({ classNa
   </svg>
 );
 
+export const GardenCareerIcon: React.FC<{ className?: string }> = ({ className = 'w-7 h-7' }) => (
+  <svg viewBox="0 0 44 44" className={className} aria-hidden="true">
+    <rect x="8" y="15" width="28" height="20" rx="4" fill="#d97706" stroke="#78350f" strokeWidth="2.2" />
+    <path d="M16 15 V11 C16 8.8 28 8.8 28 11 V15" fill="none" stroke="#78350f" strokeWidth="2.6" strokeLinecap="round" />
+    <rect x="8" y="21" width="28" height="4" fill="#b45309" />
+    <rect x="19" y="19" width="6" height="8" rx="1.8" fill="#fef08a" stroke="#78350f" strokeWidth="1.4" />
+    <circle cx="34" cy="11" r="6" fill="#16a34a" stroke="#fffbeb" strokeWidth="1.6" />
+    <path d="M31.5 11 H36.5 M34 8.5 V13.5" stroke="#ffffff" strokeWidth="1.8" strokeLinecap="round" />
+  </svg>
+);
+
+export const GardenCapitalTokenIcon: React.FC<{ className?: string }> = ({ className = 'w-6 h-6' }) => (
+  <svg viewBox="0 0 40 40" className={className} aria-hidden="true">
+    <rect x="5" y="9" width="30" height="22" rx="5" fill="#10b981" stroke="#064e3b" strokeWidth="2.2" />
+    <rect x="9" y="13" width="22" height="14" rx="2.5" fill="#a7f3d0" stroke="#047857" strokeWidth="1.3" />
+    <circle cx="20" cy="20" r="4.8" fill="#facc15" stroke="#92400e" strokeWidth="1.5" />
+    <path d="M20 17.2 V22.8 M17.2 20 H22.8" stroke="#78350f" strokeWidth="1.6" strokeLinecap="round" />
+  </svg>
+);
+
 export const GardenToolIcon: React.FC<{ tool: FarmTool; className?: string }> = ({
   tool,
   className = 'w-6 h-6',
@@ -378,6 +398,59 @@ export const GardenItemIcon: React.FC<{
             <path d="M18 10 V5 H23" stroke="#15803d" strokeWidth="2" fill="none" strokeLinecap="round" />
           </svg>
         );
+      case 'morning_glory':
+        return (
+          <svg viewBox="0 0 36 36" className={className} aria-hidden="true">
+            <path d="M13 30 L16 11" stroke="#16a34a" strokeWidth="2.8" strokeLinecap="round" />
+            <path d="M23 30 L21 10" stroke="#22c55e" strokeWidth="2.8" strokeLinecap="round" />
+            <path d="M16 12 L9 18 L15 21 Z" fill="#4ade80" stroke="#14532d" strokeWidth="1.3" />
+            <path d="M21 11 L28 16 L22 20 Z" fill="#22c55e" stroke="#14532d" strokeWidth="1.3" />
+            <ellipse cx="18" cy="9" rx="3" ry="5" fill="#86efac" stroke="#14532d" strokeWidth="1.2" />
+          </svg>
+        );
+      case 'chili':
+        return (
+          <svg viewBox="0 0 36 36" className={className} aria-hidden="true">
+            <path d="M15 9 C22 10 27 18 24 27 C21 30 16 25 14 17 Z" fill="#ef4444" stroke="#991b1b" strokeWidth="1.8" />
+            <path d="M11 12 C16 13 18 19 16 25 C13 26 10 21 9 16 Z" fill="#dc2626" stroke="#7f1d1d" strokeWidth="1.5" />
+            <path d="M15 9 L12 5" stroke="#16a34a" strokeWidth="2.5" strokeLinecap="round" />
+          </svg>
+        );
+      case 'holy_basil':
+        return (
+          <svg viewBox="0 0 36 36" className={className} aria-hidden="true">
+            <line x1="18" y1="30" x2="18" y2="11" stroke="#15803d" strokeWidth="2.6" strokeLinecap="round" />
+            <ellipse cx="12" cy="18" rx="5.5" ry="3.8" transform="rotate(-25 12 18)" fill="#22c55e" stroke="#14532d" strokeWidth="1.4" />
+            <ellipse cx="24" cy="18" rx="5.5" ry="3.8" transform="rotate(25 24 18)" fill="#16a34a" stroke="#14532d" strokeWidth="1.4" />
+            <circle cx="18" cy="9" r="3" fill="#a855f7" stroke="#581c87" strokeWidth="1.2" />
+          </svg>
+        );
+      case 'banana':
+        return (
+          <svg viewBox="0 0 36 36" className={className} aria-hidden="true">
+            <path d="M8 22 C13 29 24 27 28 15 C24 21 15 22 10 18 Z" fill="#fde047" stroke="#a16207" strokeWidth="1.6" />
+            <path d="M11 17 C16 23 25 20 27 11 C23 16 17 17 13 13 Z" fill="#facc15" stroke="#a16207" strokeWidth="1.4" />
+            <rect x="24" y="8" width="4" height="5" rx="1" fill="#78350f" />
+          </svg>
+        );
+      case 'watermelon':
+        return (
+          <svg viewBox="0 0 36 36" className={className} aria-hidden="true">
+            <path d="M7 18 A11 11 0 0 0 29 18 Z" fill="#16a34a" stroke="#14532d" strokeWidth="1.6" />
+            <path d="M9.5 18 A8.5 8.5 0 0 0 26.5 18 Z" fill="#f43f5e" />
+            <circle cx="15" cy="21" r="1.1" fill="#1e293b" />
+            <circle cx="18.5" cy="23" r="1.1" fill="#1e293b" />
+            <circle cx="22" cy="20.5" r="1.1" fill="#1e293b" />
+          </svg>
+        );
+      case 'pineapple':
+        return (
+          <svg viewBox="0 0 36 36" className={className} aria-hidden="true">
+            <path d="M14 13 L11 5 L18 10 L25 5 L22 13 Z" fill="#16a34a" stroke="#14532d" strokeWidth="1.3" />
+            <ellipse cx="18" cy="22" rx="8" ry="9.5" fill="#facc15" stroke="#a16207" strokeWidth="1.7" />
+            <path d="M13 18 L23 25 M23 18 L13 25" stroke="#ca8a04" strokeWidth="1.2" />
+          </svg>
+        );
     }
   }
 
@@ -479,6 +552,92 @@ export const GardenItemIcon: React.FC<{
           <circle cx="18" cy="19" r="3" fill="#fffbeb" />
         </svg>
       );
+    case 'tilapia_fish':
+      return (
+        <svg viewBox="0 0 36 36" className={className} aria-hidden="true">
+          <ellipse cx="17" cy="19" rx="10" ry="6.5" fill="#38bdf8" stroke="#0369a1" strokeWidth="1.7" />
+          <polygon points="26,19 33,13 33,25" fill="#0284c7" stroke="#0369a1" strokeWidth="1.4" />
+          <circle cx="11.5" cy="17.5" r="1.5" fill="#0f172a" />
+          <path d="M15 15 Q18 19 15 23" stroke="#e0f2fe" strokeWidth="1.5" fill="none" />
+        </svg>
+      );
+    case 'giant_prawn':
+      return (
+        <svg viewBox="0 0 36 36" className={className} aria-hidden="true">
+          <path d="M10 23 C10 13 22 11 26 17 C28 21 24 26 19 25" fill="#fb923c" stroke="#9a3412" strokeWidth="1.8" />
+          <path d="M10 17 L5 12 M11 19 L5 19" stroke="#ea580c" strokeWidth="1.6" strokeLinecap="round" />
+          <circle cx="13" cy="16" r="1.4" fill="#0f172a" />
+        </svg>
+      );
+    case 'grilled_fish':
+      return (
+        <svg viewBox="0 0 36 36" className={className} aria-hidden="true">
+          <ellipse cx="18" cy="24" rx="13" ry="6" fill="#fef3c7" stroke="#78350f" strokeWidth="1.4" />
+          <ellipse cx="17" cy="18" rx="9" ry="5" fill="#d97706" stroke="#78350f" strokeWidth="1.5" />
+          <polygon points="25,18 30,14 30,22" fill="#b45309" />
+          <circle cx="13" cy="16" r="2" fill="#22c55e" />
+        </svg>
+      );
+    case 'tom_yum_kung':
+      return (
+        <svg viewBox="0 0 36 36" className={className} aria-hidden="true">
+          <path d="M7 18 H29 C29 27 24 30 18 30 C12 30 7 27 7 18 Z" fill="#fef2f2" stroke="#7f1d1d" strokeWidth="1.7" />
+          <ellipse cx="18" cy="18" rx="11" ry="3.5" fill="#ea580c" />
+          <circle cx="15" cy="18" r="2.6" fill="#fb923c" />
+          <circle cx="22" cy="17.5" r="2" fill="#22c55e" />
+        </svg>
+      );
+    case 'basil_stir_fry':
+      return (
+        <svg viewBox="0 0 36 36" className={className} aria-hidden="true">
+          <circle cx="18" cy="20" r="11.5" fill="#fffbeb" stroke="#78350f" strokeWidth="1.6" />
+          <circle cx="15" cy="18" r="4.5" fill="#ffffff" stroke="#cbd5e1" strokeWidth="1" />
+          <circle cx="15" cy="18" r="2.2" fill="#facc15" />
+          <circle cx="22" cy="22" r="3.5" fill="#16a34a" />
+          <circle cx="23" cy="16" r="1.8" fill="#ef4444" />
+        </svg>
+      );
+    case 'banana_coconut_sweet':
+      return (
+        <svg viewBox="0 0 36 36" className={className} aria-hidden="true">
+          <path d="M8 18 H28 C28 26 23 30 18 30 C13 30 8 26 8 18 Z" fill="#818cf8" stroke="#312e81" strokeWidth="1.6" />
+          <ellipse cx="18" cy="18" rx="10" ry="3.2" fill="#fefce8" />
+          <circle cx="15" cy="17.5" r="2.6" fill="#fde047" />
+          <circle cx="21" cy="18" r="2.4" fill="#facc15" />
+        </svg>
+      );
+    case 'watermelon_smoothie':
+      return (
+        <svg viewBox="0 0 36 36" className={className} aria-hidden="true">
+          <path d="M12 13 H24 L22 30 H14 Z" fill="#f43f5e" stroke="#881337" strokeWidth="1.7" />
+          <line x1="18" y1="13" x2="24" y2="5" stroke="#4ade80" strokeWidth="2.4" strokeLinecap="round" />
+          <circle cx="14" cy="13" r="3" fill="#facc15" />
+        </svg>
+      );
+    case 'woven_scarf':
+      return (
+        <svg viewBox="0 0 36 36" className={className} aria-hidden="true">
+          <rect x="9" y="10" width="18" height="9" rx="4" fill="#6366f1" stroke="#312e81" strokeWidth="1.6" />
+          <path d="M12 19 V29 H18 V19 M20 19 V27 H25 V19" fill="#818cf8" stroke="#312e81" strokeWidth="1.5" />
+        </svg>
+      );
+    case 'herbal_balm':
+      return (
+        <svg viewBox="0 0 36 36" className={className} aria-hidden="true">
+          <rect x="9" y="16" width="18" height="12" rx="4" fill="#14b8a6" stroke="#134e4a" strokeWidth="1.7" />
+          <rect x="8" y="11" width="20" height="5" rx="2" fill="#fbbf24" stroke="#78350f" strokeWidth="1.4" />
+          <circle cx="18" cy="22" r="3" fill="#ecfdf5" />
+        </svg>
+      );
+    case 'gift_hamper':
+      return (
+        <svg viewBox="0 0 36 36" className={className} aria-hidden="true">
+          <path d="M8 17 H28 L25 30 H11 Z" fill="#d97706" stroke="#78350f" strokeWidth="1.7" />
+          <path d="M13 17 C13 9 23 9 23 17" fill="none" stroke="#8b5cf6" strokeWidth="2.2" />
+          <circle cx="15" cy="15" r="3" fill="#fbbf24" />
+          <circle cx="21" cy="15" r="3" fill="#6366f1" />
+        </svg>
+      );
   }
 };
 
@@ -503,13 +662,14 @@ export const GardenBuildingBadgeIcon: React.FC<{
       return <GardenItemIcon kind="product" id="berry_smoothie" className={className} />;
     case 'windmill_bakery':
       return <GardenItemIcon kind="product" id="bread" className={className} />;
+    case 'fishery_pier':
+      return <GardenItemIcon kind="product" id="giant_prawn" className={className} />;
+    case 'craft_studio':
+      return <GardenItemIcon kind="product" id="woven_scarf" className={className} />;
+    case 'digital_hub':
+      return <GardenItemIcon kind="product" id="gift_hamper" className={className} />;
     case 'lotus_fish_pond':
-      return (
-        <svg viewBox="0 0 36 36" className={className} aria-hidden="true">
-          <ellipse cx="18" cy="22" rx="12" ry="7" fill="#38bdf8" stroke="#0369a1" strokeWidth="1.6" />
-          <circle cx="18" cy="17" r="5" fill="#f472b6" stroke="#be185d" strokeWidth="1.2" />
-        </svg>
-      );
+      return <GardenItemIcon kind="product" id="tilapia_fish" className={className} />;
     default:
       return <GardenToolIcon tool="build" className={className} />;
   }

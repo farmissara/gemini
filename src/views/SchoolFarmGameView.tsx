@@ -47,11 +47,15 @@ import {
   applyQuizBoostReward,
   BUILDING_CATALOG,
   BUILDING_MAP,
+  buyCapitalToken,
   buyDailyDirtBargain,
   buyFromNeighborRoadsideShop,
   buySeedPack,
   calculateTownProsperity,
+  CAPITAL_TOKEN_BUY_COST,
+  CAREER_MAP,
   claimBeginnerPracticePack,
+  claimCareerStartupGrant,
   claimDisciplineSupplies,
   claimFarmAchievement,
   clearWeedOnTile,
@@ -66,6 +70,7 @@ import {
   dismissVisitorRequest,
   enqueueProductionJob,
   expandFarmGridTo8x8,
+  EXTRA_LUCKY_WHEEL_COST,
   fertilizeTile,
   fulfillMarketOrder,
   fulfillVisitorRequest,
@@ -93,6 +98,8 @@ import {
   sellCropFromBarn,
   speedUpProductionJob,
   spinDailyLuckyWheel,
+  spinExtraLuckyWheel,
+  switchCareerPath,
   syncBehaviorWeedsOntoFarm,
   tillPlotTile,
   unlockPlotTile,
@@ -100,6 +107,7 @@ import {
   upgradeBuildingOnTile,
   waterTile,
   type BuildingId,
+  type CareerPathId,
   type CropId,
   type DailyDirtAd,
   type FarmOwnerCharacter,
@@ -114,6 +122,8 @@ import { FarmOwnerPortraitSvg } from '../components/games/HayDayHudIcons';
 import {
   GardenBuildingBadgeIcon,
   GardenCafeCupIcon,
+  GardenCapitalTokenIcon,
+  GardenCareerIcon,
   GardenCoinCrest,
   GardenEventsIcon,
   GardenGazetteIcon,
@@ -164,9 +174,13 @@ interface SchoolFarmGameViewProps {
 }
 
 const PRODUCTION_BUILDINGS = new Set<BuildingId>([
+  'lotus_fish_pond',
+  'fishery_pier',
   'garden_cafe',
   'herbal_pavilion',
   'thai_kitchen',
+  'craft_studio',
+  'digital_hub',
   'chicken_coop',
   'dairy_barn',
   'sheep_pen',
@@ -231,6 +245,52 @@ const FALLBACK_BOOST_QUESTIONS: QuizQuestion[] = [
     ],
     correctIndex: 1,
     explanationTh: 'เกษตรผสมผสานช่วยให้ระบบนิเวศสมดุล ลดความเสี่ยง และแปรรูปเพิ่มมูลค่าได้',
+    category: 'review',
+    points: 10,
+  },
+  {
+    id: 'farm-q4',
+    subject: 'การงานอาชีพ (ประมง)',
+    gradeLevel: 'ทั่วไป',
+    questionTh: 'การเลี้ยงปลานิลในบ่อเกษตรผสมผสานควรดูแลคุณภาพน้ำข้อใดสำคัญที่สุดเพื่อไม่ให้ปลาขาดอากาศ?',
+    questionEn: 'What water quality factor is most critical to prevent pond fish suffocation?',
+    options: [
+      'รักษาระดับออกซิเจนละลายน้ำและไม่ให้อาหารเหลือเน่าเสีย',
+      'ปิดผิวน้ำให้สนิทไม่ให้โดนอากาศเลย',
+      'เทน้ำสบู่ลงในบ่อทุกวัน',
+      'ปล่อยน้ำจนแห้งขอดตลอดเวลา',
+    ],
+    correctIndex: 0,
+    explanationTh: 'ออกซิเจนละลายน้ำ (DO) ที่เพียงพอและน้ำสะอาดช่วยให้ปลาโตไว แข็งแรง',
+    category: 'review',
+    points: 10,
+  },
+  {
+    id: 'farm-q5',
+    subject: 'การงานอาชีพ (สร้างกิจการ)',
+    gradeLevel: 'ทั่วไป',
+    questionTh: 'เมื่อต้องการนำเงินทุนสร้างกิจการไปเปิดร้านใหม่ ข้อใดช่วยลดความเสี่ยงขาดทุนได้ดีที่สุด?',
+    questionEn: 'When starting a new business with startup capital, what reduces financial risk best?',
+    options: [
+      'คำนวณต้นทุน-กำไร และกันเงินทุนหมุนเวียนสำรองไว้',
+      'ใช้เงินทั้งหมดในวันแรกโดยไม่วางแผน',
+      'ตั้งราคาขายต่ำกว่าต้นทุนทุกชิ้น',
+      'ไม่ดูความต้องการของลูกค้าเลย',
+    ],
+    correctIndex: 0,
+    explanationTh: 'การวางแผนต้นทุนและมีทุนหมุนเวียนช่วยให้กิจการเดินต่อได้มั่นคงแม้เริ่มทดลองอาชีพใหม่',
+    category: 'review',
+    points: 10,
+  },
+  {
+    id: 'farm-q6',
+    subject: 'สุขศึกษา',
+    gradeLevel: 'ทั่วไป',
+    questionTh: 'ผลไม้เมืองร้อนอย่างกล้วยหอมทองอุดมไปด้วยแร่ธาตุใดที่ช่วยป้องกันตะคริว?',
+    questionEn: 'Which mineral rich in bananas helps prevent muscle cramps?',
+    options: ['โพแทสเซียม', 'ปรอท', 'ตะกั่ว', 'กำมะถัน'],
+    correctIndex: 0,
+    explanationTh: 'โพแทสเซียมในกล้วยช่วยให้กล้ามเนื้อและระบบประสาททำงานสมดุล',
     category: 'review',
     points: 10,
   },
@@ -338,6 +398,10 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
   const tradeActionCountRef = useRef(0);
   const craftActionCountRef = useRef(0);
   const riceScienceShownRef = useRef(false);
+  const latestFarmStateRef = useRef(farmState);
+  latestFarmStateRef.current = farmState;
+  const wheelSpinningRef = useRef(false);
+  const wheelTimersRef = useRef<number[]>([]);
 
   // Tick live timer every 1s only while crafting board is open or a building has an active timer
   const hasPendingQueue = useMemo(
@@ -1218,33 +1282,68 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
   const unclaimedAchievementCount = achievementsList.filter((a) => a.completed && !a.claimed).length;
   const spinAvailable = farmState.lastSpinWheelDate !== todayDate;
 
+  useEffect(() => {
+    return () => {
+      wheelTimersRef.current.forEach((id) => window.clearTimeout(id));
+      wheelTimersRef.current = [];
+    };
+  }, []);
+
   const handleSpinWheel = () => {
-    if (wheelSpinning) return;
-    if (!spinAvailable) {
-      emitAppToast({ title: lang === 'th' ? 'หมุนวงล้อวันนี้ครบแล้ว' : 'Already spun today', message: '', tone: 'info' });
+    if (wheelSpinning || wheelSpinningRef.current) return;
+    const isFreeSpin = latestFarmStateRef.current.lastSpinWheelDate !== todayDate;
+    const previewRes = isFreeSpin
+      ? spinDailyLuckyWheel(latestFarmStateRef.current, todayDate)
+      : spinExtraLuckyWheel(latestFarmStateRef.current);
+
+    if (!previewRes.ok || !previewRes.slot) {
+      emitAppToast({
+        title: lang === 'th' ? 'หมุนวงล้อไม่ได้' : 'Cannot spin wheel',
+        message: previewRes.errorTh || `ต้องใช้ ${EXTRA_LUCKY_WHEEL_COST} เหรียญเพื่อหมุนเพิ่ม`,
+        tone: 'info',
+      });
       return;
     }
-    const res = spinDailyLuckyWheel(farmState, todayDate);
-    if (!res.ok || !res.slot) return;
+
+    wheelSpinningRef.current = true;
     setWheelSpinning(true);
     setWheelWonSlot(null);
+
     const sliceAngle = 360 / LUCKY_WHEEL_REWARDS.length;
-    const targetAngle = 360 * 5 + (360 - res.slotIndex * sliceAngle - sliceAngle / 2);
-    setWheelAngle((prev) => prev + targetAngle);
+    const desiredMod = ((360 - previewRes.slotIndex * sliceAngle - sliceAngle / 2) % 360 + 360) % 360;
+    setWheelAngle((prev) => {
+      const currentMod = ((prev % 360) + 360) % 360;
+      const delta = (desiredMod - currentMod + 360) % 360;
+      return prev + 360 * 5 + delta;
+    });
+
+    wheelTimersRef.current.forEach((id) => window.clearTimeout(id));
+    wheelTimersRef.current = [];
+
     for (let i = 0; i < 12; i += 1) {
-      setTimeout(() => farmAudio.playSfx('wheelTick'), i * 210);
+      const tid = window.setTimeout(() => farmAudio.playSfx('wheelTick'), i * 195);
+      wheelTimersRef.current.push(tid);
     }
-    setTimeout(() => {
+
+    const doneTimer = window.setTimeout(() => {
+      wheelSpinningRef.current = false;
       setWheelSpinning(false);
-      setWheelWonSlot(res.slot || null);
-      persistFarm(res.state);
-      farmAudio.playSfx('gift');
-      emitAppToast({
-        title: lang === 'th' ? `วงล้อนำโชค: ${res.slot?.labelTh}!` : `Lucky Wheel: ${res.slot?.labelTh}!`,
-        message: lang === 'th' ? 'ส่งเข้าคลังสวนแล้ว' : 'Added to your garden!',
-        tone: 'success',
-      });
-    }, 2700);
+      const latest = latestFarmStateRef.current;
+      const finalRes = isFreeSpin
+        ? spinDailyLuckyWheel(latest, todayDate, previewRes.slotIndex)
+        : spinExtraLuckyWheel(latest, previewRes.slotIndex);
+      if (finalRes.ok && finalRes.slot) {
+        persistFarm(finalRes.state);
+        setWheelWonSlot(finalRes.slot);
+        farmAudio.playSfx('gift');
+        emitAppToast({
+          title: lang === 'th' ? `วงล้อนำโชค: ${finalRes.slot.labelTh}!` : `Lucky Wheel: ${finalRes.slot.labelTh}!`,
+          message: lang === 'th' ? 'ส่งเข้าคลังสวนแล้ว' : 'Added to your garden!',
+          tone: 'success',
+        });
+      }
+    }, 2650);
+    wheelTimersRef.current.push(doneTimer);
   };
 
   const handleClaimAchievement = (achievementId: string) => {
@@ -1275,7 +1374,59 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
     farmAudio.playSfx('gift');
     emitAppToast({
       title: lang === 'th' ? 'รับชุดเสบียงฝึกหัดมือใหม่สำเร็จ!' : 'Starter Pack Claimed!',
-      message: '+12💧 · +200🪙 · +4🌱 · +3★ · เมล็ดพันธุ์และผลผลิตเข้าคลังแล้ว',
+      message: '+12💧 · +200🪙 · +2 บัตรทุนสร้างกิจการ · +4🌱 · +3★ เข้าคลังแล้ว',
+      tone: 'success',
+    });
+  };
+
+  const handleSwitchCareer = (careerId: CareerPathId) => {
+    const next = switchCareerPath(farmState, careerId);
+    persistFarm(next);
+    farmAudio.playSfx('tap');
+    emitAppToast({
+      title: lang === 'th' ? `เปลี่ยนสายอาชีพเป็น "${CAREER_MAP[careerId].nameTh}"` : `Switched career!`,
+      message: CAREER_MAP[careerId].perkTh,
+      tone: 'success',
+    });
+  };
+
+  const handleBuyCapitalToken = () => {
+    const res = buyCapitalToken(farmState);
+    if (!res.ok) {
+      emitAppToast({
+        title: lang === 'th' ? 'แลกบัตรทุนไม่สำเร็จ' : 'Cannot buy token',
+        message: res.errorTh || '',
+        tone: 'warning',
+      });
+      return;
+    }
+    persistFarm(res.state);
+    farmAudio.playSfx('coin');
+    emitAppToast({
+      title: lang === 'th' ? 'แลกบัตรทุนสร้างกิจการ +1 ใบแล้ว!' : '+1 Startup Capital Token!',
+      message: `-${CAPITAL_TOKEN_BUY_COST}🪙 สำหรับนำไปสร้างอาชีพและกิจการใหม่`,
+      tone: 'success',
+    });
+  };
+
+  const handleClaimCareerGrant = (careerId: CareerPathId) => {
+    const res = claimCareerStartupGrant(farmState, careerId);
+    if (!res.ok || !res.career) {
+      emitAppToast({
+        title: lang === 'th' ? 'รับทุนตั้งต้นไม่ได้' : 'Cannot claim startup grant',
+        message: res.errorTh || '',
+        tone: 'warning',
+      });
+      return;
+    }
+    persistFarm(res.state);
+    farmAudio.playSfx('gift');
+    if (onEarnRewards && currentUser?.id) {
+      onEarnRewards(currentUser.id, 35, 1, true);
+    }
+    emitAppToast({
+      title: lang === 'th' ? `เปิดกิจการ "${res.career.nameTh}" สำเร็จ!` : `Launched ${res.career.nameEn}!`,
+      message: `+${res.career.grantCoins}🪙 · +${res.career.grantStars}★ · พิมพ์เขียวและวัตถุดิบตั้งต้นพร้อมลุย!`,
       tone: 'success',
     });
   };
@@ -1485,12 +1636,15 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 min-w-0">
               <FarmOwnerPortraitSvg character={farmState.ownerCharacter} className="w-9 h-9 rounded-full border border-amber-400 shrink-0" />
-              <div className="min-w-0">
-                <p className="text-xs font-black text-[#45270f] truncate">{farmState.farmName}</p>
-                <p className="text-[11px] text-[#7c5c3e] truncate tabular-nums">
-                  {farmState.ownerName} · Lv.{townLevelInfo.level}
-                </p>
-              </div>
+            <div className="min-w-0">
+              <p className="text-xs font-black text-[#45270f] truncate">{farmState.farmName}</p>
+              <p className="text-[11px] text-[#7c5c3e] truncate tabular-nums">
+                {farmState.ownerName} · Lv.{townLevelInfo.level}
+              </p>
+              <p className="text-[10px] font-bold text-emerald-700 truncate">
+                อาชีพ: {CAREER_MAP[farmState.activeCareerId || 'agri_farmer']?.nameTh}
+              </p>
+            </div>
             </div>
             <button
               type="button"
@@ -1504,7 +1658,7 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
 
           <div className="space-y-1">
             <div className="flex items-center justify-between text-[11px] font-bold text-[#7c5c3e] tabular-nums">
-              <span>ค่าประสบการณ์สวน</span>
+              <span>ค่าประสบการณ์เมืองอาชีพ</span>
               <span>{townLevelInfo.currentIntoLevel}/{townLevelInfo.nextLevelNeed} XP</span>
             </div>
             <div className="w-full h-2 rounded-full bg-amber-200/70 overflow-hidden">
@@ -1529,16 +1683,23 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
               className="min-h-[34px] px-2 rounded-xl border border-[#d6b37c] bg-white text-[11px] font-bold text-[#45270f] flex items-center justify-center gap-1 cursor-pointer hover:bg-amber-50"
             >
               <Pencil className="w-3 h-3" />
-              <span>ตั้งชื่อสวน</span>
+              <span>ตั้งชื่อเมือง</span>
             </button>
             <button
               type="button"
-              onClick={() => openBoardWithSfx('character')}
+              onClick={() => openBoardWithSfx('careers')}
               className="min-h-[34px] px-2 rounded-xl bg-[#15803d] text-white text-[11px] font-bold flex items-center justify-center gap-1 cursor-pointer hover:bg-[#166534]"
             >
-              <span>แต่งตัวละคร</span>
+              <span>สายอาชีพ & ทุน</span>
             </button>
           </div>
+          <button
+            type="button"
+            onClick={() => openBoardWithSfx('character')}
+            className="w-full min-h-[32px] px-2 rounded-xl border border-[#d6b37c] bg-amber-50 text-[11px] font-bold text-[#45270f] cursor-pointer hover:bg-amber-100"
+          >
+            แต่งตัวละครเจ้าของกิจการ
+          </button>
         </div>
       )}
 
@@ -1546,7 +1707,7 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
       {openMenu === 'supplies' && (
         <div className="absolute top-13 right-2.5 z-30 w-[272px] rounded-2xl border border-[#c8a165]/90 bg-[#fcf7ec]/96 backdrop-blur-xl p-3 shadow-2xl space-y-2.5 pointer-events-auto">
           <div className="flex items-center justify-between">
-            <p className="text-xs font-black text-[#45270f]">ทรัพยากร & เสบียงในสวน</p>
+            <p className="text-xs font-black text-[#45270f]">ทรัพยากร & ทุนสร้างกิจการ</p>
             <button
               type="button"
               onClick={() => setOpenMenu('none')}
@@ -1573,6 +1734,22 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
             <div className="rounded-xl bg-white border border-[#d6b37c]/60 px-2.5 py-1.5">
               <span className="font-bold text-violet-700">★ ดาวเมือง: {farmState.townStars}</span>
               <p className="text-[10px] text-[#7c5c3e]">ใช้ปลดล็อกแปลง/สร้าง</p>
+            </div>
+            <div className="col-span-2 rounded-xl bg-emerald-50 border border-emerald-300 px-2.5 py-1.5 flex items-center justify-between gap-2">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <GardenCapitalTokenIcon className="w-5 h-5 shrink-0" />
+                <div>
+                  <p className="font-black text-emerald-800">บัตรทุนสร้างกิจการ: {farmState.capitalTokens ?? 0} ใบ</p>
+                  <p className="text-[10px] text-emerald-700">เปิดรับทุนลองอาชีพใหม่</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => openBoardWithSfx('careers')}
+                className="px-2 py-1 rounded-lg bg-emerald-600 text-white text-[10px] font-black cursor-pointer shrink-0"
+              >
+                เปิดดู
+              </button>
             </div>
           </div>
 
@@ -1601,7 +1778,7 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
                 }}
                 className="w-full min-h-[36px] px-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-black cursor-pointer transition"
               >
-                รับชุดเสบียงฝึกหัดมือใหม่ฟรี (+12💧 +200🪙)
+                รับชุดฝึกหัดฟรี (+12💧 +200🪙 +2บัตรทุน)
               </button>
             )}
           </div>
@@ -2169,7 +2346,7 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
         {openMenu === 'hub' && (
           <div className="pointer-events-auto w-[328px] max-w-[94vw] rounded-2xl border border-[#c8a165]/90 bg-[#fcf7ec]/96 backdrop-blur-xl p-2.5 shadow-2xl space-y-1.5">
             <div className="flex items-center justify-between px-1">
-              <p className="text-xs font-black text-[#45270f]">เมนูสวน & คาเฟ่ (แตะเพื่อเปิด)</p>
+              <p className="text-xs font-black text-[#45270f]">เมืองอาชีพแสนสนุก · เมนูกิจการ</p>
               <button
                 type="button"
                 onClick={() => setOpenMenu('none')}
@@ -2183,9 +2360,17 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
             <div className="space-y-1 max-h-[60dvh] overflow-y-auto no-scrollbar">
               {[
                 {
+                  id: 'careers' as const,
+                  icon: <GardenCareerIcon className="w-6 h-6" />,
+                  title: 'สายอาชีพ & ทุนสร้างกิจการ',
+                  desc: `อาชีพ: ${CAREER_MAP[farmState.activeCareerId || 'agri_farmer']?.nameTh} · รับทุนลองทำอาชีพใหม่`,
+                  badge: farmState.capitalTokens ?? 0,
+                  onClick: () => openBoardWithSfx('careers'),
+                },
+                {
                   id: 'cafe' as const,
                   icon: <GardenCafeCupIcon className="w-6 h-6" />,
-                  title: 'คาเฟ่ & ส่งออเดอร์',
+                  title: 'คาเฟ่ & ส่งออเดอร์ตลาด',
                   desc: 'เสิร์ฟลูกค้าในสวน และส่งรถบรรทุกตลาดรับเหรียญ-เพชร',
                   badge: farmState.visitorQueue.length + farmState.marketOrders.length,
                   onClick: () => openBoardWithSfx('cafe'),
@@ -2193,8 +2378,8 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
                 {
                   id: 'craft' as const,
                   icon: <GardenMortarCraftIcon className="w-6 h-6" />,
-                  title: 'ครัวแปรรูป & โรงชง',
-                  desc: 'ต้มชาอัญชัน คั้นกะทิ ทำขนมไทย และชงเครื่องดื่มคาเฟ่',
+                  title: 'ประมง ครัวแปรรูป & สตูดิโอ',
+                  desc: 'เลี้ยงปลา-กุ้ง ทอผ้า ทำต้มยำกุ้ง เครื่องดื่ม และกระเช้าออนไลน์',
                   badge: readyQueueCount > 0 ? readyQueueCount : activeQueueCount > 0 ? activeQueueCount : undefined,
                   onClick: () => {
                     setFocusBuildingId(null);
@@ -2228,7 +2413,7 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
                 {
                   id: 'town' as const,
                   icon: <GardenNeighborsIcon className="w-6 h-6" />,
-                  title: 'เยี่ยมสวนเพื่อนร่วมโรงเรียน',
+                  title: 'เยี่ยมเมืองเพื่อนร่วมโรงเรียน',
                   desc: 'ช่วยเพื่อนรดน้ำต้นไม้และอุดหนุนซุ้มขายของ',
                   onClick: () => {
                     setVisitingNeighbor(null);
@@ -2239,7 +2424,7 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
                   id: 'chest' as const,
                   icon: <GardenGiftBasketIcon className="w-6 h-6" />,
                   title: 'กล่องเสบียง & ชุดมือใหม่',
-                  desc: 'รับน้ำ ปุ๋ย เมล็ดฟรีจากวินัยการเรียนและชุดฝึกหัดเริ่มต้น',
+                  desc: 'รับน้ำ ปุ๋ย บัตรทุน เมล็ดฟรีจากวินัยการเรียนและชุดเริ่มต้น',
                   badge: disciplineSummary.hasAnythingToClaim ? 1 : undefined,
                   onClick: () => openBoardWithSfx('chest'),
                 },
@@ -2489,11 +2674,14 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
           farmAudio.playSfx('gift');
           openBoardWithSfx(null);
           emitAppToast({
-            title: lang === 'th' ? 'บันทึกสไตล์เจ้าของสวนแล้ว!' : 'Garden Owner Updated!',
-            message: lang === 'th' ? 'ตัวละครใหม่เดินดูแลสวนคาเฟ่ของคุณแล้ว' : 'Your farmer look is live on the board.',
+            title: lang === 'th' ? 'บันทึกสไตล์เจ้าของกิจการแล้ว!' : 'Character Updated!',
+            message: lang === 'th' ? 'ตัวละครใหม่เดินดูแลเมืองอาชีพของคุณแล้ว' : 'Your character look is live on the board.',
             tone: 'success',
           });
         }}
+        onSwitchCareer={handleSwitchCareer}
+        onClaimCareerGrant={handleClaimCareerGrant}
+        onBuyCapitalToken={handleBuyCapitalToken}
       />
 
       {/* REAL-LIFE 8-SUBJECT CONTEXTUAL CHALLENGE POP-UP */}

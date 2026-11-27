@@ -88,4 +88,31 @@ describe('farmLifeSubjects', () => {
     });
     assert.equal(rehydrated.lifeSubjectMastery?.science_tech?.solved, 1);
   });
+
+  it('provides crop science questions for all 6 new crops and expanded multi-seed questions across subjects', () => {
+    const newCrops = ['morning_glory', 'chili', 'holy_basil', 'banana', 'watermelon', 'pineapple'] as const;
+    for (const cropId of newCrops) {
+      const challenge = generateCropScienceChallenge(cropId, 0);
+      assert.equal(challenge.subjectId, 'science_tech');
+      assert.equal(challenge.options.length, 4);
+      assert.ok(challenge.correctIndex >= 0 && challenge.correctIndex < 4);
+      assert.ok(challenge.questionTh.length > 10);
+    }
+
+    const state = createInitialFarmState({
+      schoolId: 'sch-1',
+      userId: 'usr-expand-q',
+      ownerName: 'ต้นกล้า',
+    });
+
+    for (const subject of LIFE_SUBJECT_CATALOG) {
+      for (const seedIdx of [0, 1, 2, 3]) {
+        const scenario = generateScenarioForSubject(subject.id, state, seedIdx);
+        assert.equal(scenario.subjectId, subject.id);
+        assert.equal(scenario.options.length, 4);
+        assert.ok(scenario.correctIndex >= 0 && scenario.correctIndex < 4);
+        assert.equal(new Set(scenario.options).size, 4);
+      }
+    }
+  });
 });

@@ -14,11 +14,17 @@ export type CropId =
   | 'tomato'
   | 'butterfly_pea'
   | 'pandan'
+  | 'morning_glory'
+  | 'chili'
+  | 'holy_basil'
   | 'strawberry'
   | 'sunflower'
   | 'jasmine_rice'
   | 'coconut'
   | 'mango'
+  | 'banana'
+  | 'watermelon'
+  | 'pineapple'
   | 'pumpkin'
   | 'golden_melon';
 
@@ -26,14 +32,24 @@ export type ProductId =
   | 'egg'
   | 'milk'
   | 'wool'
+  | 'tilapia_fish'
+  | 'giant_prawn'
   | 'coconut_milk'
   | 'herbal_tea_base'
   | 'bread'
   | 'berry_smoothie'
+  | 'watermelon_smoothie'
   | 'butterfly_pea_latte'
   | 'pandan_coconut_latte'
   | 'pandan_cake'
   | 'mango_sticky_rice'
+  | 'banana_coconut_sweet'
+  | 'basil_stir_fry'
+  | 'grilled_fish'
+  | 'tom_yum_kung'
+  | 'woven_scarf'
+  | 'herbal_balm'
+  | 'gift_hamper'
   | 'berry_cake'
   | 'pumpkin_pie';
 
@@ -50,8 +66,19 @@ export type BuildingId =
   | 'thai_kitchen'
   | 'herbal_pavilion'
   | 'lotus_fish_pond'
+  | 'fishery_pier'
+  | 'craft_studio'
+  | 'digital_hub'
   | 'wooden_fence'
   | 'cobble_path';
+
+export type CareerPathId =
+  | 'agri_farmer'
+  | 'fishery_master'
+  | 'chef_barista'
+  | 'artisan_maker'
+  | 'digital_merchant'
+  | 'herbal_wellness';
 
 export type FarmTool =
   | 'inspect'
@@ -311,6 +338,9 @@ export interface SchoolFarmState {
   lastSpinWheelDate?: string;
   claimedAchievements?: string[];
   claimedBeginnerPack?: boolean;
+  activeCareerId?: CareerPathId;
+  capitalTokens?: number;
+  claimedCareerGrants?: CareerPathId[];
   lifeSubjectMastery?: Partial<Record<string, { solved: number; streak: number; lastDate: string }>>;
   updatedAt: string;
 }
@@ -412,6 +442,45 @@ export const CROP_CATALOG: CropDefinition[] = [
     descEn: 'Aromatic Thai pandan leaf for cafe drinks & cakes',
   },
   {
+    id: 'morning_glory',
+    nameTh: 'ผักบุ้งจีน',
+    nameEn: 'Water Spinach',
+    watersNeeded: 2,
+    seedCost: 8,
+    sellPrice: 24,
+    xpReward: 12,
+    unlockTownLevel: 1,
+    accentColor: '#22c55e',
+    descTh: 'ผักสวนครัวโตไว เก็บง่ายและใช้เลี้ยงปลาในบ่อประมง',
+    descEn: 'Fast-growing greens for kitchen & pond fish feed',
+  },
+  {
+    id: 'chili',
+    nameTh: 'พริกขี้หนูสวน',
+    nameEn: 'Thai Bird Chili',
+    watersNeeded: 2,
+    seedCost: 14,
+    sellPrice: 40,
+    xpReward: 16,
+    unlockTownLevel: 1,
+    accentColor: '#dc2626',
+    descTh: 'เครื่องเทศครัวไทย ปรุงผัดกะเพรา ปลาย่าง และต้มยำกุ้ง',
+    descEn: 'Spicy herb essential for Thai dishes & seafood',
+  },
+  {
+    id: 'holy_basil',
+    nameTh: 'ใบกะเพราหอม',
+    nameEn: 'Holy Basil',
+    watersNeeded: 2,
+    seedCost: 15,
+    sellPrice: 42,
+    xpReward: 17,
+    unlockTownLevel: 1,
+    accentColor: '#15803d',
+    descTh: 'สมุนไพรกลิ่นฉุนหอม ทำผัดกะเพราไข่ดาวและปลาย่างสมุนไพร',
+    descEn: 'Fragrant Thai holy basil for signature stir-fries',
+  },
+  {
     id: 'strawberry',
     nameTh: 'สตรอว์เบอร์รีสวนเรียน',
     nameEn: 'Campus Strawberry',
@@ -476,6 +545,45 @@ export const CROP_CATALOG: CropDefinition[] = [
     accentColor: '#f59e0b',
     descTh: 'ผลสุกหอมหวาน จับคู่ข้าวหอมมะลิเป็นข้าวเหนียวมะม่วง',
     descEn: 'Ripe golden mango for classic Thai mango sticky rice',
+  },
+  {
+    id: 'banana',
+    nameTh: 'กล้วยหอมทอง',
+    nameEn: 'Golden Banana',
+    watersNeeded: 3,
+    seedCost: 28,
+    sellPrice: 84,
+    xpReward: 28,
+    unlockTownLevel: 1,
+    accentColor: '#fde047',
+    descTh: 'ผลไม้พลังงานสูง ทำกล้วยบวชชีกะทิสดแสนอร่อย',
+    descEn: 'Sweet energy fruit for Thai coconut banana dessert',
+  },
+  {
+    id: 'watermelon',
+    nameTh: 'แตงโมหวานฉ่ำ',
+    nameEn: 'Juicy Watermelon',
+    watersNeeded: 3,
+    seedCost: 36,
+    sellPrice: 108,
+    xpReward: 34,
+    unlockTownLevel: 2,
+    accentColor: '#16a34a',
+    descTh: 'ผลไม้หน้าร้อนเนื้อแดงฉ่ำ ทำแตงโมปั่นเย็นสดชื่น',
+    descEn: 'Refreshing summer melon for juice stands (Lv.2)',
+  },
+  {
+    id: 'pineapple',
+    nameTh: 'สับปะรดสีทอง',
+    nameEn: 'Golden Pineapple',
+    watersNeeded: 3,
+    seedCost: 42,
+    sellPrice: 126,
+    xpReward: 38,
+    unlockTownLevel: 2,
+    accentColor: '#eab308',
+    descTh: 'รสเปรี้ยวอมหวาน วิตามินซีสูง คั้นน้ำผลไม้ขายดีมาก',
+    descEn: 'Tangy golden fruit unlocked at Lv.2',
   },
   {
     id: 'pumpkin',
@@ -544,6 +652,36 @@ export const PRODUCT_CATALOG: ProductDefinition[] = [
     descTh: 'เลี้ยงแกะด้วยข้าวโพด 1 ฝัก เพื่อตัดขนแกะ',
   },
   {
+    id: 'tilapia_fish',
+    nameTh: 'ปลานิลสดจากบ่อ',
+    nameEn: 'Fresh Pond Tilapia',
+    sourceBuildingId: 'lotus_fish_pond',
+    ingredients: [
+      { kind: 'crop', id: 'morning_glory', qty: 1 },
+      { kind: 'crop', id: 'corn', qty: 1 },
+    ],
+    craftTimeSec: 9,
+    sellPrice: 118,
+    xpReward: 34,
+    accentColor: '#38bdf8',
+    descTh: 'เลี้ยงปลานิลด้วยผักบุ้ง + ข้าวโพด จับปลาสดเข้าครัวหรือขายประมง',
+  },
+  {
+    id: 'giant_prawn',
+    nameTh: 'กุ้งแม่น้ำก้ามกราม',
+    nameEn: 'Giant River Prawn',
+    sourceBuildingId: 'fishery_pier',
+    ingredients: [
+      { kind: 'crop', id: 'jasmine_rice', qty: 1 },
+      { kind: 'crop', id: 'corn', qty: 1 },
+    ],
+    craftTimeSec: 11,
+    sellPrice: 178,
+    xpReward: 48,
+    accentColor: '#f97316',
+    descTh: 'เพาะเลี้ยงกุ้งก้ามกรามเนื้อแน่นที่ท่าเรือประมง',
+  },
+  {
     id: 'herbal_tea_base',
     nameTh: 'หัวเชื้อชาอัญชันใบเตย',
     nameEn: 'Butterfly Pea & Pandan Brew',
@@ -557,6 +695,22 @@ export const PRODUCT_CATALOG: ProductDefinition[] = [
     xpReward: 40,
     accentColor: '#6366f1',
     descTh: 'ต้มสกัดดอกอัญชัน + ใบเตยหอม เป็นเบสเครื่องดื่มคาเฟ่',
+  },
+  {
+    id: 'herbal_balm',
+    nameTh: 'บาล์มสมุนไพรสปาไทย',
+    nameEn: 'Thai Herbal Wellness Balm',
+    sourceBuildingId: 'herbal_pavilion',
+    ingredients: [
+      { kind: 'crop', id: 'butterfly_pea', qty: 1 },
+      { kind: 'crop', id: 'pandan', qty: 1 },
+      { kind: 'crop', id: 'coconut', qty: 1 },
+    ],
+    craftTimeSec: 14,
+    sellPrice: 265,
+    xpReward: 70,
+    accentColor: '#14b8a6',
+    descTh: 'สกัดน้ำมันมะพร้าวผสมอัญชัน-ใบเตย เป็นผลิตภัณฑ์สปาธรรมชาติ',
   },
   {
     id: 'coconut_milk',
@@ -599,6 +753,21 @@ export const PRODUCT_CATALOG: ProductDefinition[] = [
     xpReward: 46,
     accentColor: '#fb7185',
     descTh: 'ปั่นสตรอว์เบอร์รี + มะเขือเทศ สดชื่นสุดๆ',
+  },
+  {
+    id: 'watermelon_smoothie',
+    nameTh: 'แตงโมสับปะรดปั่น',
+    nameEn: 'Watermelon Pineapple Cooler',
+    sourceBuildingId: 'juice_stand',
+    ingredients: [
+      { kind: 'crop', id: 'watermelon', qty: 1 },
+      { kind: 'crop', id: 'pineapple', qty: 1 },
+    ],
+    craftTimeSec: 14,
+    sellPrice: 295,
+    xpReward: 78,
+    accentColor: '#f43f5e',
+    descTh: 'น้ำผลไม้คลายร้อนผสมแตงโมหวานฉ่ำและสับปะรดสีทอง',
   },
   {
     id: 'butterfly_pea_latte',
@@ -648,6 +817,69 @@ export const PRODUCT_CATALOG: ProductDefinition[] = [
     descTh: 'เนื้อเค้กนุ่มหอมใบเตย ราดครีมกะทิสดละมุนลิ้น',
   },
   {
+    id: 'banana_coconut_sweet',
+    nameTh: 'กล้วยบวชชีกะทิสด',
+    nameEn: 'Banana in Coconut Cream',
+    sourceBuildingId: 'thai_kitchen',
+    ingredients: [
+      { kind: 'crop', id: 'banana', qty: 1 },
+      { kind: 'product', id: 'coconut_milk', qty: 1 },
+    ],
+    craftTimeSec: 12,
+    sellPrice: 245,
+    xpReward: 64,
+    accentColor: '#facc15',
+    descTh: 'ขนมไทยทำง่ายขายดี กล้วยหอมต้มกะทิสดหอมหวาน',
+  },
+  {
+    id: 'basil_stir_fry',
+    nameTh: 'ผัดกะเพราไข่ดาวทรงเครื่อง',
+    nameEn: 'Thai Holy Basil & Fried Egg',
+    sourceBuildingId: 'thai_kitchen',
+    ingredients: [
+      { kind: 'crop', id: 'holy_basil', qty: 1 },
+      { kind: 'crop', id: 'chili', qty: 1 },
+      { kind: 'product', id: 'egg', qty: 1 },
+    ],
+    craftTimeSec: 12,
+    sellPrice: 215,
+    xpReward: 58,
+    accentColor: '#ef4444',
+    descTh: 'เมนูอาชีพเชฟสุดฮิต ใบกะเพรา + พริกขี้หนู + ไข่ไก่สด',
+  },
+  {
+    id: 'grilled_fish',
+    nameTh: 'ปลาย่างสมุนไพรประมง',
+    nameEn: 'Herb-Grilled Tilapia',
+    sourceBuildingId: 'fishery_pier',
+    ingredients: [
+      { kind: 'product', id: 'tilapia_fish', qty: 1 },
+      { kind: 'crop', id: 'holy_basil', qty: 1 },
+      { kind: 'crop', id: 'chili', qty: 1 },
+    ],
+    craftTimeSec: 14,
+    sellPrice: 295,
+    xpReward: 76,
+    accentColor: '#0284c7',
+    descTh: 'ปลานิลสดจากบ่อหมักใบกะเพราและพริกขี้หนู ย่างหอมกรุ่น',
+  },
+  {
+    id: 'tom_yum_kung',
+    nameTh: 'ต้มยำกุ้งน้ำข้น',
+    nameEn: 'Royal Tom Yum Kung',
+    sourceBuildingId: 'thai_kitchen',
+    ingredients: [
+      { kind: 'product', id: 'giant_prawn', qty: 1 },
+      { kind: 'crop', id: 'chili', qty: 1 },
+      { kind: 'product', id: 'coconut_milk', qty: 1 },
+    ],
+    craftTimeSec: 18,
+    sellPrice: 430,
+    xpReward: 112,
+    accentColor: '#ea580c',
+    descTh: 'เมนูประมงระดับซิกเนเจอร์ กุ้งแม่น้ำ + พริก + กะทิสด',
+  },
+  {
     id: 'mango_sticky_rice',
     nameTh: 'ข้าวเหนียวมะม่วงน้ำดอกไม้',
     nameEn: 'Mango Sticky Rice',
@@ -662,6 +894,37 @@ export const PRODUCT_CATALOG: ProductDefinition[] = [
     xpReward: 95,
     accentColor: '#fbbf24',
     descTh: 'เมนูขนมไทยระดับพรีเมียม ข้าวหอมมูนกะทิสดคู่เนื้อมะม่วงสุก',
+  },
+  {
+    id: 'woven_scarf',
+    nameTh: 'ผ้าพันคอขนแกะทอมือ',
+    nameEn: 'Handwoven Indigo Scarf',
+    sourceBuildingId: 'craft_studio',
+    ingredients: [
+      { kind: 'product', id: 'wool', qty: 1 },
+      { kind: 'crop', id: 'butterfly_pea', qty: 1 },
+    ],
+    craftTimeSec: 14,
+    sellPrice: 235,
+    xpReward: 62,
+    accentColor: '#6366f1',
+    descTh: 'งานฝีมือย้อมสีครามอัญชันจากขนแกะนุ่ม ขายได้ราคาสูง',
+  },
+  {
+    id: 'gift_hamper',
+    nameTh: 'กระเช้าของขวัญภูมิปัญญา',
+    nameEn: 'Artisan Gift Hamper',
+    sourceBuildingId: 'digital_hub',
+    ingredients: [
+      { kind: 'crop', id: 'jasmine_rice', qty: 1 },
+      { kind: 'crop', id: 'mango', qty: 1 },
+      { kind: 'product', id: 'herbal_tea_base', qty: 1 },
+    ],
+    craftTimeSec: 18,
+    sellPrice: 445,
+    xpReward: 115,
+    accentColor: '#8b5cf6',
+    descTh: 'จัดชุดกระเช้าของฝากพรีเมียมส่งขายออนไลน์ทั่วประเทศ',
   },
   {
     id: 'berry_cake',
@@ -755,9 +1018,9 @@ export const BUILDING_CATALOG: BuildingDefinition[] = [
   },
   {
     id: 'lotus_fish_pond',
-    nameTh: 'บ่อปลา & บัวหลวง',
-    nameEn: 'Lotus & Koi Pond',
-    category: 'landmark',
+    nameTh: 'บ่อปลาประมง & บัวหลวง',
+    nameEn: 'Fishery & Lotus Pond',
+    category: 'production',
     coinCost: 95,
     starCost: 2,
     unlockTownLevel: 1,
@@ -765,8 +1028,51 @@ export const BUILDING_CATALOG: BuildingDefinition[] = [
     dailyFertilizer: 1,
     prosperityPoints: 48,
     maxLevel: 3,
-    descTh: 'เกษตรผสมผสาน เลี้ยงปลาคู่บัว ได้ปุ๋ยทองคำ +1 และ +34🪙/วัน',
-    descEn: 'Integrated lotus pond yielding +34 coins & +1 fertilizer daily',
+    descTh: 'เกษตรผสมผสาน & ประมง เลี้ยงปลานิลคู่บัว +1 ปุ๋ยทองคำ และ +34🪙/วัน',
+    descEn: 'Integrated lotus fish pond raising tilapia (+34 coins & +1 fertilizer daily)',
+  },
+  {
+    id: 'fishery_pier',
+    nameTh: 'ท่าเรือประมง & ฟาร์มกุ้ง',
+    nameEn: 'Fishery & Prawn Pier',
+    category: 'production',
+    coinCost: 115,
+    starCost: 2,
+    unlockTownLevel: 1,
+    dailyCoins: 44,
+    prosperityPoints: 62,
+    maxLevel: 3,
+    descTh: 'อาชีพประมง! เพาะเลี้ยงกุ้งแม่น้ำก้ามกราม & ย่างปลาสมุนไพร (+44🪙/วัน)',
+    descEn: 'Fishery hub raising giant river prawns & grilled herb fish (+44 coins daily)',
+  },
+  {
+    id: 'craft_studio',
+    nameTh: 'สตูดิโอหัตถกรรม & ผ้าทอ',
+    nameEn: 'Artisan Craft Studio',
+    category: 'production',
+    coinCost: 125,
+    starCost: 2,
+    unlockTownLevel: 1,
+    dailyCoins: 46,
+    prosperityPoints: 66,
+    maxLevel: 3,
+    descTh: 'อาชีพช่างฝีมือ! ทอผ้าพันคอขนแกะย้อมสีอัญชันธรรมชาติ (+46🪙/วัน)',
+    descEn: 'Craft workshop weaving natural indigo scarves (+46 coins daily)',
+  },
+  {
+    id: 'digital_hub',
+    nameTh: 'ศูนย์ไลฟ์ค้าขายออนไลน์',
+    nameEn: 'E-Commerce & Gift Studio',
+    category: 'production',
+    coinCost: 155,
+    starCost: 3,
+    unlockTownLevel: 1,
+    dailyCoins: 60,
+    cropSellBonusPct: 12,
+    prosperityPoints: 82,
+    maxLevel: 3,
+    descTh: 'อาชีพค้าขายออนไลน์! แพ็กกระเช้าของขวัญ & เพิ่มราคาขายพืช +12% (+60🪙/วัน)',
+    descEn: 'Digital commerce studio packing gift hampers & +12% crop value (+60 coins daily)',
   },
   {
     id: 'chicken_coop',
@@ -1027,6 +1333,45 @@ export const createVisitorRequests = (townLevel: number, seedOffset = 0): Visito
       rewardGems: townLevel >= 2 ? 4 : 2,
       dailyQuotaLimit: 3,
     },
+    {
+      npcId: 'uncle_somchai',
+      nameTh: 'ลุงสมชาย (ตลาดประมงชุมชน)',
+      roleTh: 'ลูกค้าประมง & ครัวไทย',
+      dialogueTh: 'วันนี้ชาวบ้านอยากทานปลานิลสดจากบ่อประมงสักตัว เอาไปย่างสมุนไพรหอมๆ จ้ะ!',
+      itemKind: 'product',
+      itemId: 'tilapia_fish',
+      quantity: 1,
+      rewardCoins: 175,
+      rewardXp: 46,
+      rewardGems: 3,
+      dailyQuotaLimit: 3,
+    },
+    {
+      npcId: 'aunt_malee',
+      nameTh: 'ป้ามาลี (ร้านอาหารไทย)',
+      roleTh: 'แขกประจำสวน',
+      dialogueTh: 'ขอซื้อผักบุ้งจีนสดๆ จากสวน 2 กำ ไปผัดไฟแดงมื้อเที่ยงให้เด็กๆ หน่อยนะ',
+      itemKind: 'crop',
+      itemId: 'morning_glory',
+      quantity: 2,
+      rewardCoins: 68,
+      rewardXp: 24,
+      rewardGems: 2,
+      dailyQuotaLimit: 3,
+    },
+    {
+      npcId: 'namsai',
+      nameTh: 'น้องน้ำใส (ชมรมอาชีพ)',
+      roleTh: 'ลูกค้ากิจการชุมชน',
+      dialogueTh: 'ขนมกล้วยบวชชีกะทิสดหอมมาก! ขอรับกล้วยหอมทอง 2 หวีไปทำขนมขายนะ',
+      itemKind: 'crop',
+      itemId: 'banana',
+      quantity: 2,
+      rewardCoins: 205,
+      rewardXp: 52,
+      rewardGems: 3,
+      dailyQuotaLimit: 3,
+    },
   ];
 
   const picked: VisitorRequest[] = [];
@@ -1080,6 +1425,28 @@ export const createMarketOrders = (townLevel: number, seedOffset = 0): MarketOrd
       rewardXp: 40,
       rewardGems: 3,
     },
+    {
+      titleTh: 'ชุดประมงสด: ผักบุ้งจีน + ปลานิลบ่อบัว',
+      titleEn: 'Fishery Set: Water Spinach & Tilapia',
+      cropId: 'morning_glory',
+      quantity: 2,
+      productId: 'tilapia_fish',
+      productQty: 1,
+      rewardCoins: 235,
+      rewardXp: 68,
+      rewardGems: 4,
+    },
+    {
+      titleTh: 'ออเดอร์ครัวไทย: ใบกะเพรา + พริก + กุ้งแม่น้ำ',
+      titleEn: 'Thai Seafood Order: Holy Basil & Prawn',
+      cropId: 'holy_basil',
+      quantity: 2,
+      productId: 'giant_prawn',
+      productQty: 1,
+      rewardCoins: 340,
+      rewardXp: 88,
+      rewardGems: 5,
+    },
     ...(townLevel >= 2
       ? [
           {
@@ -1103,6 +1470,17 @@ export const createMarketOrders = (townLevel: number, seedOffset = 0): MarketOrd
             rewardCoins: 540,
             rewardXp: 130,
             rewardGems: 8,
+          },
+          {
+            titleTh: 'เทศกาลผลไม้หน้าร้อน: แตงโมหวานฉ่ำ + ต้มยำกุ้ง',
+            titleEn: 'Summer Feast: Watermelon & Tom Yum Kung',
+            cropId: 'watermelon' as CropId,
+            quantity: 1,
+            productId: 'tom_yum_kung' as ProductId,
+            productQty: 1,
+            rewardCoins: 620,
+            rewardXp: 145,
+            rewardGems: 9,
           },
         ]
       : []),
@@ -1151,11 +1529,17 @@ const emptyRecord = (): Record<CropId, number> => ({
   tomato: 0,
   butterfly_pea: 0,
   pandan: 0,
+  morning_glory: 0,
+  chili: 0,
+  holy_basil: 0,
   strawberry: 0,
   sunflower: 0,
   jasmine_rice: 0,
   coconut: 0,
   mango: 0,
+  banana: 0,
+  watermelon: 0,
+  pineapple: 0,
   pumpkin: 0,
   golden_melon: 0,
 });
@@ -1164,14 +1548,24 @@ const emptyProductsRecord = (): Record<ProductId, number> => ({
   egg: 0,
   milk: 0,
   wool: 0,
+  tilapia_fish: 0,
+  giant_prawn: 0,
   coconut_milk: 0,
   herbal_tea_base: 0,
   bread: 0,
   berry_smoothie: 0,
+  watermelon_smoothie: 0,
   butterfly_pea_latte: 0,
   pandan_coconut_latte: 0,
   pandan_cake: 0,
   mango_sticky_rice: 0,
+  banana_coconut_sweet: 0,
+  basil_stir_fry: 0,
+  grilled_fish: 0,
+  tom_yum_kung: 0,
+  woven_scarf: 0,
+  herbal_balm: 0,
+  gift_hamper: 0,
   berry_cake: 0,
   pumpkin_pie: 0,
 });
@@ -1317,25 +1711,31 @@ export const createInitialFarmState = (params: {
     ownerName: params.ownerName,
     ownerRoom: params.ownerRoom,
     ownerCharacter: { ...DEFAULT_FARM_OWNER_CHARACTER },
-    farmName: params.farmName || `สวนคาเฟ่ของ${params.ownerName.split(' ')[0] || 'ฉัน'}`,
-    coins: 750,
-    water: 25,
+    farmName: params.farmName || `เมืองอาชีพของ${params.ownerName.split(' ')[0] || 'ฉัน'}`,
+    coins: 1200,
+    water: 28,
     dailyFertilizer: 10,
-    fertilizer: 2,
+    fertilizer: 3,
     goldenStreakBonusDates: [],
-    townStars: 10,
+    townStars: 12,
     farmXp: 40,
     seeds: {
       corn: 8,
       carrot: 6,
-      tomato: 2,
+      tomato: 4,
       butterfly_pea: 6,
       pandan: 6,
+      morning_glory: 6,
+      chili: 4,
+      holy_basil: 4,
       strawberry: 0,
       sunflower: 0,
       jasmine_rice: 5,
       coconut: 3,
       mango: 3,
+      banana: 3,
+      watermelon: 0,
+      pineapple: 0,
       pumpkin: 0,
       golden_melon: 0,
     },
@@ -1345,13 +1745,19 @@ export const createInitialFarmState = (params: {
       tomato: 2,
       butterfly_pea: 4,
       pandan: 4,
+      morning_glory: 4,
+      chili: 3,
+      holy_basil: 3,
       jasmine_rice: 3,
       coconut: 2,
       mango: 2,
+      banana: 2,
     },
     goods: {
       ...emptyProductsRecord(),
-      egg: 1,
+      egg: 2,
+      tilapia_fish: 1,
+      giant_prawn: 1,
       coconut_milk: 2,
       pandan_coconut_latte: 1,
       mango_sticky_rice: 1,
@@ -1373,6 +1779,9 @@ export const createInitialFarmState = (params: {
       'herbal_pavilion',
       'thai_kitchen',
       'lotus_fish_pond',
+      'fishery_pier',
+      'craft_studio',
+      'digital_hub',
       'chicken_coop',
       'dairy_barn',
       'sheep_pen',
@@ -1397,6 +1806,9 @@ export const createInitialFarmState = (params: {
     musicMuted: false,
     lastSpinWheelDate: '',
     claimedAchievements: [],
+    activeCareerId: 'agri_farmer',
+    capitalTokens: 3,
+    claimedCareerGrants: [],
     updatedAt: new Date().toISOString(),
   };
 };
@@ -1484,6 +1896,9 @@ export const normalizeFarmState = (
     lastSpinWheelDate: typeof raw.lastSpinWheelDate === 'string' ? raw.lastSpinWheelDate : '',
     claimedAchievements: Array.isArray(raw.claimedAchievements) ? raw.claimedAchievements : [],
     claimedBeginnerPack: Boolean(raw.claimedBeginnerPack),
+    activeCareerId: raw.activeCareerId || base.activeCareerId,
+    capitalTokens: typeof raw.capitalTokens === 'number' ? raw.capitalTokens : base.capitalTokens,
+    claimedCareerGrants: Array.isArray(raw.claimedCareerGrants) ? raw.claimedCareerGrants : [],
     lifeSubjectMastery:
       raw.lifeSubjectMastery && typeof raw.lifeSubjectMastery === 'object'
         ? { ...raw.lifeSubjectMastery }
@@ -2936,13 +3351,18 @@ export const buyFromNeighborRoadsideShop = (
 };
 
 export const getCropSellMultiplier = (state: SchoolFarmState): number => {
-  const bakeryBonus = state.tiles.reduce((sum, t) => {
+  const buildingBonus = state.tiles.reduce((sum, t) => {
     if (t.kind === 'building' && t.buildingId === 'windmill_bakery') {
       return sum + 0.2 * (t.buildingLevel || 1);
     }
+    if (t.kind === 'building' && t.buildingId === 'digital_hub') {
+      return sum + 0.12 * (t.buildingLevel || 1);
+    }
     return sum;
   }, 0);
-  return 1 + bakeryBonus;
+  const careerBonus =
+    state.activeCareerId === 'agri_farmer' || state.activeCareerId === 'digital_merchant' ? 0.1 : 0;
+  return 1 + buildingBonus + careerBonus;
 };
 
 export const buySeedPack = (
@@ -3205,6 +3625,43 @@ export const spinDailyLuckyWheel = (
     ...state,
     lastSpinWheelDate: todayDate,
     coins: state.coins + (slot.rewardKind === 'coins' ? slot.amount : 0),
+    water: state.water + (slot.rewardKind === 'water' ? slot.amount : 0),
+    fertilizer: state.fertilizer + (slot.rewardKind === 'fertilizer' ? slot.amount : 0),
+    townStars: state.townStars + (slot.rewardKind === 'stars' ? slot.amount : 0),
+    farmXp: state.farmXp + (slot.rewardKind === 'xp' ? slot.amount : 15),
+    seeds:
+      slot.rewardKind === 'seed' && slot.cropId
+        ? { ...state.seeds, [slot.cropId]: (state.seeds[slot.cropId] || 0) + slot.amount }
+        : state.seeds,
+    updatedAt: new Date().toISOString(),
+  };
+
+  return { ok: true, state: nextState, slotIndex, slot };
+};
+
+export const EXTRA_LUCKY_WHEEL_COST = 60;
+
+export const spinExtraLuckyWheel = (
+  state: SchoolFarmState,
+  forcedSlotIndex?: number
+): { state: SchoolFarmState; ok: boolean; slotIndex: number; slot?: LuckyWheelSlot; errorTh?: string } => {
+  if (state.coins < EXTRA_LUCKY_WHEEL_COST) {
+    return {
+      state,
+      ok: false,
+      slotIndex: 0,
+      errorTh: `ต้องใช้ ${EXTRA_LUCKY_WHEEL_COST} เหรียญเพื่อหมุนวงล้อเพิ่ม`,
+    };
+  }
+  const slotIndex =
+    forcedSlotIndex !== undefined
+      ? ((forcedSlotIndex % LUCKY_WHEEL_REWARDS.length) + LUCKY_WHEEL_REWARDS.length) % LUCKY_WHEEL_REWARDS.length
+      : Math.floor(Math.random() * LUCKY_WHEEL_REWARDS.length);
+  const slot = LUCKY_WHEEL_REWARDS[slotIndex];
+
+  const nextState: SchoolFarmState = {
+    ...state,
+    coins: state.coins - EXTRA_LUCKY_WHEEL_COST + (slot.rewardKind === 'coins' ? slot.amount : 0),
     water: state.water + (slot.rewardKind === 'water' ? slot.amount : 0),
     fertilizer: state.fertilizer + (slot.rewardKind === 'fertilizer' ? slot.amount : 0),
     townStars: state.townStars + (slot.rewardKind === 'stars' ? slot.amount : 0),
@@ -3505,24 +3962,254 @@ export const claimBeginnerPracticePack = (
       water: state.water + 12,
       dailyFertilizer: state.dailyFertilizer + 4,
       townStars: state.townStars + 3,
+      capitalTokens: (state.capitalTokens ?? 0) + 2,
       seeds: {
         ...state.seeds,
         corn: (state.seeds.corn || 0) + 3,
         butterfly_pea: (state.seeds.butterfly_pea || 0) + 3,
         pandan: (state.seeds.pandan || 0) + 3,
+        morning_glory: (state.seeds.morning_glory || 0) + 3,
+        chili: (state.seeds.chili || 0) + 2,
+        holy_basil: (state.seeds.holy_basil || 0) + 2,
         jasmine_rice: (state.seeds.jasmine_rice || 0) + 3,
         coconut: (state.seeds.coconut || 0) + 2,
         mango: (state.seeds.mango || 0) + 2,
+        banana: (state.seeds.banana || 0) + 2,
       },
       barn: {
         ...state.barn,
         carrot: (state.barn.carrot || 0) + 2,
         coconut: (state.barn.coconut || 0) + 2,
+        morning_glory: (state.barn.morning_glory || 0) + 2,
       },
       unlockedBlueprints: mergedBlueprints,
       updatedAt: new Date().toISOString(),
     },
   };
 };
+
+// =========================================================================
+// CAREER PATHS & STARTUP BUSINESS CAPITAL SYSTEM ("สายอาชีพ & ทุนสร้างกิจการ")
+// =========================================================================
+
+export interface CareerDefinition {
+  id: CareerPathId;
+  nameTh: string;
+  nameEn: string;
+  roleTagTh: string;
+  perkTh: string;
+  descTh: string;
+  accentColor: string;
+  grantCoins: number;
+  grantStars: number;
+  grantWater: number;
+  grantFertilizer: number;
+  unlockBlueprints: BuildingId[];
+  grantSeeds: Partial<Record<CropId, number>>;
+  grantBarn: Partial<Record<CropId, number>>;
+  grantGoods: Partial<Record<ProductId, number>>;
+}
+
+export const CAPITAL_TOKEN_BUY_COST = 120;
+
+export const CAREER_CATALOG: CareerDefinition[] = [
+  {
+    id: 'agri_farmer',
+    nameTh: 'เกษตรกรยุคใหม่',
+    nameEn: 'Modern Farmer',
+    roleTagTh: 'ปลูกผักผลไม้ & เกษตรผสมผสาน',
+    perkTh: 'รับทุนปลูกผักผลไม้ครบชุด + โบนัสราคาขายพืชผล',
+    descTh: 'เชี่ยวชาญการปลูกพืชเศรษฐกิจ ผักสวนครัว และผลไม้ไทยส่งตลาด',
+    accentColor: '#16a34a',
+    grantCoins: 200,
+    grantStars: 2,
+    grantWater: 12,
+    grantFertilizer: 2,
+    unlockBlueprints: ['school_greenhouse'],
+    grantSeeds: { morning_glory: 4, chili: 3, holy_basil: 3, banana: 3, watermelon: 2 },
+    grantBarn: { corn: 3, morning_glory: 3 },
+    grantGoods: {},
+  },
+  {
+    id: 'fishery_master',
+    nameTh: 'นักประมง & เพาะเลี้ยงสัตว์น้ำ',
+    nameEn: 'Fishery & Aquaculture',
+    roleTagTh: 'บ่อปลานิล · ท่าเรือกุ้งแม่น้ำ · ปลาย่าง',
+    perkTh: 'รับทุนสร้างบ่อปลา ท่าเรือประมง และวัตถุดิบสัตว์น้ำทันที',
+    descTh: 'สร้างกิจการประมง เลี้ยงปลานิลในบ่อบัวและกุ้งแม่น้ำก้ามกรามขายตลาด',
+    accentColor: '#0284c7',
+    grantCoins: 240,
+    grantStars: 3,
+    grantWater: 10,
+    grantFertilizer: 1,
+    unlockBlueprints: ['lotus_fish_pond', 'fishery_pier'],
+    grantSeeds: { morning_glory: 4, corn: 4, jasmine_rice: 3 },
+    grantBarn: { morning_glory: 3, holy_basil: 2, chili: 2 },
+    grantGoods: { tilapia_fish: 2, giant_prawn: 1 },
+  },
+  {
+    id: 'chef_barista',
+    nameTh: 'เชฟอาหารไทย & บาริสต้า',
+    nameEn: 'Thai Chef & Barista',
+    roleTagTh: 'ครัวไทย · คาเฟ่ในสวน · น้ำผลไม้ปั่น',
+    perkTh: 'รับทุนวัตถุดิบปรุงต้มยำกุ้ง ผัดกะเพรา และเครื่องดื่มซิกเนเจอร์',
+    descTh: 'เปิดกิจการร้านอาหารและคาเฟ่ในสวน แปรรูปอาหารไทยขายกำไรสูง',
+    accentColor: '#d97706',
+    grantCoins: 220,
+    grantStars: 2,
+    grantWater: 6,
+    grantFertilizer: 1,
+    unlockBlueprints: ['thai_kitchen', 'garden_cafe', 'juice_stand'],
+    grantSeeds: { chili: 3, holy_basil: 3, mango: 2, pineapple: 2 },
+    grantBarn: { mango: 2, banana: 2, chili: 2, holy_basil: 2 },
+    grantGoods: { coconut_milk: 2, milk: 2, egg: 2 },
+  },
+  {
+    id: 'artisan_maker',
+    nameTh: 'ช่างฝีมือ & ดีไซเนอร์ชุมชน',
+    nameEn: 'Artisan Craft Designer',
+    roleTagTh: 'ทอผ้าพันคอ · งานจักสาน · ตกแต่งเมือง',
+    perkTh: 'รับทุนสร้างสตูดิโอหัตถกรรมและคอกแกะพร้อมขนแกะตั้งต้น',
+    descTh: 'สร้างแบรนด์สินค้าหัตถกรรม ย้อมสีธรรมชาติจากดอกอัญชัน',
+    accentColor: '#4f46e5',
+    grantCoins: 250,
+    grantStars: 3,
+    grantWater: 6,
+    grantFertilizer: 1,
+    unlockBlueprints: ['craft_studio', 'sheep_pen'],
+    grantSeeds: { butterfly_pea: 4, pandan: 3 },
+    grantBarn: { butterfly_pea: 4 },
+    grantGoods: { wool: 3, woven_scarf: 1 },
+  },
+  {
+    id: 'digital_merchant',
+    nameTh: 'พ่อค้าออนไลน์ & นักการตลาด',
+    nameEn: 'E-Commerce Entrepreneur',
+    roleTagTh: 'ไลฟ์ขายของ · กระเช้าพรีเมียม · ซุ้มตลาด',
+    perkTh: 'รับทุนเปิดศูนย์ไลฟ์ค้าขายออนไลน์และสินค้านำร่องจัดกระเช้า',
+    descTh: 'รวบรวมสินค้าชุมชนจัดกระเช้าของขวัญขายออนไลน์และส่งตลาด',
+    accentColor: '#9333ea',
+    grantCoins: 280,
+    grantStars: 3,
+    grantWater: 5,
+    grantFertilizer: 1,
+    unlockBlueprints: ['digital_hub', 'windmill_bakery'],
+    grantSeeds: { jasmine_rice: 3, mango: 3 },
+    grantBarn: { jasmine_rice: 3, mango: 2 },
+    grantGoods: { herbal_tea_base: 2, bread: 2, gift_hamper: 1 },
+  },
+  {
+    id: 'herbal_wellness',
+    nameTh: 'นักสมุนไพร & สปาธรรมชาติ',
+    nameEn: 'Herbal & Wellness Maker',
+    roleTagTh: 'ศาลาสมุนไพร · บาล์มสปา · ชาอัญชัน',
+    perkTh: 'รับทุนชุดสมุนไพรออร์แกนิกและพิมพ์เขียวเรือนกระจก',
+    descTh: 'แปรรูปสมุนไพรไทยเป็นเครื่องดื่มสุขภาพและบาล์มสปาอโรมา',
+    accentColor: '#0d9488',
+    grantCoins: 220,
+    grantStars: 2,
+    grantWater: 10,
+    grantFertilizer: 2,
+    unlockBlueprints: ['herbal_pavilion', 'school_greenhouse'],
+    grantSeeds: { butterfly_pea: 5, pandan: 5, coconut: 3 },
+    grantBarn: { butterfly_pea: 3, pandan: 3, coconut: 2 },
+    grantGoods: { herbal_tea_base: 2, herbal_balm: 1 },
+  },
+];
+
+export const CAREER_MAP: Record<CareerPathId, CareerDefinition> = Object.fromEntries(
+  CAREER_CATALOG.map((c) => [c.id, c])
+) as Record<CareerPathId, CareerDefinition>;
+
+export const switchCareerPath = (
+  state: SchoolFarmState,
+  careerId: CareerPathId
+): SchoolFarmState => ({
+  ...state,
+  activeCareerId: careerId,
+  updatedAt: new Date().toISOString(),
+});
+
+export const buyCapitalToken = (
+  state: SchoolFarmState
+): { state: SchoolFarmState; ok: boolean; errorTh?: string } => {
+  if (state.coins < CAPITAL_TOKEN_BUY_COST) {
+    return {
+      state,
+      ok: false,
+      errorTh: `ต้องใช้ ${CAPITAL_TOKEN_BUY_COST} เหรียญเพื่อแลกบัตรทุนสร้างกิจการ`,
+    };
+  }
+  return {
+    ok: true,
+    state: {
+      ...state,
+      coins: state.coins - CAPITAL_TOKEN_BUY_COST,
+      capitalTokens: (state.capitalTokens ?? 0) + 1,
+      updatedAt: new Date().toISOString(),
+    },
+  };
+};
+
+export const claimCareerStartupGrant = (
+  state: SchoolFarmState,
+  careerId: CareerPathId
+): { state: SchoolFarmState; ok: boolean; career?: CareerDefinition; errorTh?: string } => {
+  const career = CAREER_MAP[careerId];
+  if (!career) return { state, ok: false, errorTh: 'ไม่พบสายอาชีพที่เลือก' };
+  const claimed = state.claimedCareerGrants || [];
+  if (claimed.includes(careerId)) {
+    return { state, ok: false, errorTh: `รับทุนตั้งต้นอาชีพ "${career.nameTh}" ไปแล้ว` };
+  }
+  const tokens = state.capitalTokens ?? 0;
+  if (tokens < 1) {
+    return {
+      state,
+      ok: false,
+      errorTh: 'บัตรทุนสร้างกิจการหมดแล้ว (แลกเพิ่มได้ 120 เหรียญ หรือรับจากภารกิจ/ควิซ)',
+    };
+  }
+
+  const nextSeeds = { ...state.seeds };
+  (Object.entries(career.grantSeeds) as Array<[CropId, number]>).forEach(([cid, qty]) => {
+    nextSeeds[cid] = (nextSeeds[cid] || 0) + qty;
+  });
+
+  const nextBarn = { ...state.barn };
+  (Object.entries(career.grantBarn) as Array<[CropId, number]>).forEach(([cid, qty]) => {
+    nextBarn[cid] = (nextBarn[cid] || 0) + qty;
+  });
+
+  const nextGoods = { ...(state.goods || emptyProductsRecord()) };
+  (Object.entries(career.grantGoods) as Array<[ProductId, number]>).forEach(([pid, qty]) => {
+    nextGoods[pid] = (nextGoods[pid] || 0) + qty;
+  });
+
+  const mergedBlueprints = Array.from(
+    new Set([...(state.unlockedBlueprints || []), ...career.unlockBlueprints])
+  );
+
+  return {
+    ok: true,
+    career,
+    state: {
+      ...state,
+      activeCareerId: careerId,
+      capitalTokens: tokens - 1,
+      claimedCareerGrants: [...claimed, careerId],
+      coins: state.coins + career.grantCoins,
+      townStars: state.townStars + career.grantStars,
+      water: state.water + career.grantWater,
+      fertilizer: state.fertilizer + career.grantFertilizer,
+      farmXp: state.farmXp + 35,
+      seeds: nextSeeds,
+      barn: nextBarn,
+      goods: nextGoods,
+      unlockedBlueprints: mergedBlueprints,
+      updatedAt: new Date().toISOString(),
+    },
+  };
+};
+
 
 

@@ -247,9 +247,9 @@ export const FEATURE_FLAG_LABELS: FeatureFlagDescriptor[] = [
     key: 'school_farm',
     category: 'learning_games',
     minLevel: 'level_3',
-    labelTh: 'ฟาร์มโรงเรียนแสนสนุก (School Farm & Town)',
-    labelEn: 'School Farm & Town',
-    descTh: 'เกมทำฟาร์มและสร้างเมืองที่ผูกกับเวลาเรียน การบ้าน และคะแนนความดี',
+    labelTh: 'เมืองอาชีพแสนสนุก (Career Valley & Farm)',
+    labelEn: 'Career Valley & Farm',
+    descTh: 'เกมจำลองอาชีพ เกษตร ประมง คาเฟ่ และทุนสร้างกิจการจากวินัยการเรียน',
     tabIds: ['school_farm'],
   },
   {

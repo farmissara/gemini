@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Check,
   Clock,
@@ -15,8 +15,12 @@ import type { AppLanguage, QuizQuestion, RewardItem } from '../../types';
 import {
   BUILDING_CATALOG,
   BUILDING_MAP,
+  CAPITAL_TOKEN_BUY_COST,
+  CAREER_CATALOG,
+  CAREER_MAP,
   CROP_CATALOG,
   CROP_MAP,
+  EXTRA_LUCKY_WHEEL_COST,
   FARM_CHARACTER_PRESETS,
   LUCKY_WHEEL_REWARDS,
   PRODUCT_CATALOG,
@@ -27,6 +31,7 @@ import {
   getTownLevelFromXp,
   isCropUnlocked,
   type BuildingId,
+  type CareerPathId,
   type CropId,
   type DailyDirtAd,
   type DisciplineChestSummary,
@@ -40,6 +45,8 @@ import {
 import {
   GardenBuildingBadgeIcon,
   GardenCafeCupIcon,
+  GardenCapitalTokenIcon,
+  GardenCareerIcon,
   GardenCoinCrest,
   GardenEventsIcon,
   GardenGazetteIcon,
@@ -65,6 +72,7 @@ export type GardenBoardKind =
   | 'newspaper'
   | 'character'
   | 'guide'
+  | 'careers'
   | null;
 
 export type CafeSubTab = 'visitors' | 'orders';
@@ -263,18 +271,190 @@ interface GardenBoardSetProps {
   charDraft: FarmOwnerCharacter;
   setCharDraft: React.Dispatch<React.SetStateAction<FarmOwnerCharacter>>;
   onSaveCharacter: () => void;
+  // Careers & Startup Business Capital
+  onSwitchCareer?: (careerId: CareerPathId) => void;
+  onClaimCareerGrant?: (careerId: CareerPathId) => void;
+  onBuyCapitalToken?: () => void;
 }
 
 const PRODUCTION_FILTER_BUILDINGS: BuildingId[] = [
+  'lotus_fish_pond',
+  'fishery_pier',
   'garden_cafe',
   'herbal_pavilion',
   'thai_kitchen',
+  'craft_studio',
+  'digital_hub',
   'chicken_coop',
   'dairy_barn',
   'juice_stand',
   'windmill_bakery',
   'sheep_pen',
 ];
+
+const LuckySpinWheelPanel: React.FC<{
+  wheelAngle: number;
+  wheelSpinning: boolean;
+  wheelWonSlot: LuckyWheelSlot | null;
+  spinAvailable: boolean;
+  coins: number;
+  onSpinWheel: () => void;
+}> = ({ wheelAngle, wheelSpinning, wheelWonSlot, spinAvailable, coins, onSpinWheel }) => {
+  const wheelDiscRef = useRef<HTMLDivElement | null>(null);
+  const currentAngleRef = useRef<number>(wheelAngle);
+  const [renderAngle, setRenderAngle] = useState<number>(wheelAngle);
+
+  useEffect(() => {
+    if (!wheelSpinning) {
+      currentAngleRef.current = wheelAngle;
+      setRenderAngle(wheelAngle);
+      if (wheelDiscRef.current) {
+        wheelDiscRef.current.style.transform = `rotate(${wheelAngle}deg)`;
+      }
+      return;
+    }
+
+    const startAngle = currentAngleRef.current;
+    const targetAngle = wheelAngle;
+    const delta = targetAngle - startAngle;
+    if (Math.abs(delta) < 0.01) return;
+
+    const durationMs = 2600;
+    const startTs = performance.now();
+    let rafId = 0;
+
+    const step = (now: number) => {
+      const elapsed = now - startTs;
+      const t = Math.min(1, Math.max(0, elapsed / durationMs));
+      const eased = 1 - Math.pow(1 - t, 4);
+      const nextDeg = startAngle + delta * eased;
+      currentAngleRef.current = nextDeg;
+      if (wheelDiscRef.current) {
+        wheelDiscRef.current.style.transform = `rotate(${nextDeg}deg)`;
+      }
+      if (t < 1) {
+        rafId = window.requestAnimationFrame(step);
+      } else {
+        setRenderAngle(targetAngle);
+      }
+    };
+
+    rafId = window.requestAnimationFrame(step);
+    return () => {
+      if (rafId) window.cancelAnimationFrame(rafId);
+    };
+  }, [wheelAngle, wheelSpinning]);
+
+  const canPayExtraSpin = coins >= EXTRA_LUCKY_WHEEL_COST;
+  const canSpin = !wheelSpinning && (spinAvailable || canPayExtraSpin);
+
+  return (
+    <div className="flex flex-col items-center gap-3 py-1">
+      <div className="relative w-56 h-56 flex items-center justify-center">
+        {/* Top Pointer Needle */}
+        <div
+          className={`absolute -top-2 z-20 w-0 h-0 border-l-[11px] border-r-[11px] border-t-[20px] border-l-transparent border-r-transparent border-t-rose-600 drop-shadow ${
+            wheelSpinning ? 'animate-bounce' : ''
+          }`}
+        />
+
+        {/* Clickable Rotating HTML Wrapper (reliable across all browsers/mobile) */}
+        <button
+          type="button"
+          onClick={onSpinWheel}
+          disabled={!canSpin}
+          aria-label={spinAvailable ? 'แตะเพื่อหมุนวงล้อฟรี' : 'แตะเพื่อหมุนวงล้อรางวัล'}
+          className="relative w-52 h-52 rounded-full cursor-pointer disabled:cursor-default focus:outline-none group"
+        >
+          <div
+            ref={wheelDiscRef}
+            className="w-full h-full will-change-transform"
+            style={{ transform: `rotate(${renderAngle}deg)` }}
+          >
+            <svg viewBox="0 0 200 200" className="w-full h-full drop-shadow-xl">
+              <circle cx="100" cy="100" r="97" fill="#78350f" stroke="#f59e0b" strokeWidth="3" />
+              {LUCKY_WHEEL_REWARDS.map((slot, idx) => {
+                const n = LUCKY_WHEEL_REWARDS.length;
+                const startDeg = idx * (360 / n) - 90;
+                const endDeg = (idx + 1) * (360 / n) - 90;
+                const startRad = (startDeg * Math.PI) / 180;
+                const endRad = (endDeg * Math.PI) / 180;
+                const x1 = 100 + 91 * Math.cos(startRad);
+                const y1 = 100 + 91 * Math.sin(startRad);
+                const x2 = 100 + 91 * Math.cos(endRad);
+                const y2 = 100 + 91 * Math.sin(endRad);
+                const midRad = (((startDeg + endDeg) / 2) * Math.PI) / 180;
+                const tx = 100 + 57 * Math.cos(midRad);
+                const ty = 100 + 57 * Math.sin(midRad);
+                const pegX = 100 + 93.5 * Math.cos(startRad);
+                const pegY = 100 + 93.5 * Math.sin(startRad);
+                return (
+                  <g key={slot.id}>
+                    <path
+                      d={`M100,100 L${x1},${y1} A91,91 0 0,1 ${x2},${y2} Z`}
+                      fill={slot.color}
+                      stroke="#ffffff"
+                      strokeWidth="2"
+                    />
+                    <text
+                      x={tx}
+                      y={ty}
+                      textAnchor="middle"
+                      dominantBaseline="middle"
+                      fontSize="8.5"
+                      fontWeight="900"
+                      fill="#0f172a"
+                      transform={`rotate(${(startDeg + endDeg) / 2 + 90}, ${tx}, ${ty})`}
+                    >
+                      {slot.labelTh.slice(0, 12)}
+                    </text>
+                    <circle cx={pegX} cy={pegY} r="2.8" fill="#fef3c7" stroke="#92400e" strokeWidth="0.9" />
+                  </g>
+                );
+              })}
+            </svg>
+          </div>
+
+          {/* Stationary Center Spin Hub */}
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+            <div className="w-11 h-11 rounded-full bg-[#fffbeb] border-[3px] border-[#78350f] shadow-md flex items-center justify-center group-hover:scale-105 transition-transform">
+              <span className="text-[10px] font-black text-[#b45309]">
+                {wheelSpinning ? '...' : 'หมุน!'}
+              </span>
+            </div>
+          </div>
+        </button>
+      </div>
+
+      {wheelWonSlot && (
+        <div className="px-3.5 py-1.5 rounded-xl bg-emerald-100/90 dark:bg-emerald-950/60 border border-emerald-400/60 text-xs font-black text-emerald-800 dark:text-emerald-200">
+          ยินดีด้วย! ได้รับ {wheelWonSlot.labelTh}
+        </div>
+      )}
+
+      <button
+        type="button"
+        disabled={!canSpin}
+        onClick={onSpinWheel}
+        className="w-full max-w-xs min-h-[42px] px-4 rounded-xl bg-rose-600 hover:bg-rose-700 disabled:opacity-45 text-white text-xs font-black cursor-pointer shadow-md active:scale-[0.98] transition"
+      >
+        {wheelSpinning
+          ? 'กำลังหมุนวงล้อ...'
+          : spinAvailable
+            ? 'หมุนวงล้อฟรีวันนี้!'
+            : canPayExtraSpin
+              ? `หมุนเพิ่มอีกครั้ง (${EXTRA_LUCKY_WHEEL_COST} 🪙)`
+              : `หมุนฟรีครบแล้ว (ต้องใช้ ${EXTRA_LUCKY_WHEEL_COST} 🪙)`}
+      </button>
+
+      {!spinAvailable && (
+        <p className="text-[11px] font-bold text-[#7c5c3e] dark:text-amber-200/80 text-center">
+          ใช้สิทธิ์หมุนฟรีวันนี้ไปแล้ว · หมุนเพิ่มได้ตลอดด้วย {EXTRA_LUCKY_WHEEL_COST} เหรียญ (มี {coins.toLocaleString()} 🪙)
+        </p>
+      )}
+    </div>
+  );
+};
 
 export const GardenBoardSet: React.FC<GardenBoardSetProps> = ({
   activeBoard,
@@ -345,11 +525,17 @@ export const GardenBoardSet: React.FC<GardenBoardSetProps> = ({
   charDraft,
   setCharDraft,
   onSaveCharacter,
+  onSwitchCareer,
+  onClaimCareerGrant,
+  onBuyCapitalToken,
 }) => {
   const queue = farmState.productionQueue || [];
   const activeRoadsideCount = (farmState.roadsideShop || []).filter((l) => !l.sold).length;
   const totalBarnItems = (Object.values(farmState.barn) as number[]).reduce((a, b) => a + b, 0);
   const totalGoodsItems = (Object.values(farmState.goods || {}) as number[]).reduce((a, b) => a + b, 0);
+  const activeCareer = CAREER_MAP[farmState.activeCareerId || 'agri_farmer'] || CAREER_CATALOG[0];
+  const capitalTokens = farmState.capitalTokens ?? 0;
+  const claimedGrants = new Set(farmState.claimedCareerGrants || []);
 
   return (
     <>
@@ -357,11 +543,11 @@ export const GardenBoardSet: React.FC<GardenBoardSetProps> = ({
       <GameFloatingBoard
         isOpen={activeBoard === 'craft'}
         onClose={onClose}
-        title={lang === 'th' ? 'สายการผลิต & คาเฟ่ในสวน' : 'Garden Cafe & Production Chain'}
+        title={lang === 'th' ? 'สายการผลิต ประมง & กิจการอาชีพ' : 'Production, Fishery & Career Crafts'}
         subtitle={
           lang === 'th'
-            ? 'ปลูกวัตถุดิบ → แปรรูปสมุนไพร/กะทิ → ชงเครื่องดื่ม & ขนมไทย'
-            : 'Harvest crops → Process bases → Brew Cafe Specialties'
+            ? 'ปลูกผักผลไม้ & เลี้ยงปลา-กุ้ง → แปรรูปอาหาร หัตถกรรม & กระเช้าออนไลน์'
+            : 'Harvest & aquaculture → Process Thai cuisine, crafts & gifts'
         }
         icon={<GardenMortarCraftIcon className="w-6 h-6" />}
       >
@@ -1071,71 +1257,14 @@ export const GardenBoardSet: React.FC<GardenBoardSetProps> = ({
         </div>
 
         {eventsTab === 'wheel' && (
-          <div className="flex flex-col items-center gap-3 py-1">
-            <div className="relative w-56 h-56 flex items-center justify-center">
-              <div className="absolute -top-2 z-20 w-0 h-0 border-l-[10px] border-r-[10px] border-t-[18px] border-l-transparent border-r-transparent border-t-rose-600 drop-shadow" />
-              <svg
-                viewBox="0 0 200 200"
-                className="w-52 h-52 drop-shadow-xl"
-                style={{
-                  transform: `rotate(${wheelAngle}deg)`,
-                  transition: wheelSpinning ? 'transform 2.65s cubic-bezier(0.12, 0.88, 0.22, 1)' : 'none',
-                }}
-              >
-                {LUCKY_WHEEL_REWARDS.map((slot, idx) => {
-                  const n = LUCKY_WHEEL_REWARDS.length;
-                  const startDeg = idx * (360 / n) - 90;
-                  const endDeg = (idx + 1) * (360 / n) - 90;
-                  const startRad = (startDeg * Math.PI) / 180;
-                  const endRad = (endDeg * Math.PI) / 180;
-                  const x1 = 100 + 92 * Math.cos(startRad);
-                  const y1 = 100 + 92 * Math.sin(startRad);
-                  const x2 = 100 + 92 * Math.cos(endRad);
-                  const y2 = 100 + 92 * Math.sin(endRad);
-                  const midRad = (((startDeg + endDeg) / 2) * Math.PI) / 180;
-                  const tx = 100 + 58 * Math.cos(midRad);
-                  const ty = 100 + 58 * Math.sin(midRad);
-                  return (
-                    <g key={slot.id}>
-                      <path
-                        d={`M100,100 L${x1},${y1} A92,92 0 0,1 ${x2},${y2} Z`}
-                        fill={slot.color}
-                        stroke="#ffffff"
-                        strokeWidth="2"
-                      />
-                      <text
-                        x={tx}
-                        y={ty}
-                        textAnchor="middle"
-                        dominantBaseline="middle"
-                        fontSize="9"
-                        fontWeight="900"
-                        fill="#0f172a"
-                        transform={`rotate(${(startDeg + endDeg) / 2 + 90}, ${tx}, ${ty})`}
-                      >
-                        {slot.labelTh.slice(0, 12)}
-                      </text>
-                    </g>
-                  );
-                })}
-                <circle cx="100" cy="100" r="18" fill="#fffbeb" stroke="#78350f" strokeWidth="4" />
-                <circle cx="100" cy="100" r="6" fill="#f59e0b" />
-              </svg>
-            </div>
-            {wheelWonSlot && (
-              <p className="text-xs font-black text-emerald-700 dark:text-emerald-300">
-                ยินดีด้วย! ได้รับ {wheelWonSlot.labelTh}
-              </p>
-            )}
-            <button
-              type="button"
-              disabled={!spinAvailable || wheelSpinning}
-              onClick={onSpinWheel}
-              className="w-full max-w-xs min-h-[40px] rounded-xl bg-rose-600 hover:bg-rose-700 disabled:opacity-45 text-white text-xs font-black cursor-pointer"
-            >
-              {wheelSpinning ? 'กำลังหมุน...' : spinAvailable ? 'หมุนวงล้อฟรีวันนี้!' : 'หมุนวันนี้ไปแล้ว'}
-            </button>
-          </div>
+          <LuckySpinWheelPanel
+            wheelAngle={wheelAngle}
+            wheelSpinning={wheelSpinning}
+            wheelWonSlot={wheelWonSlot}
+            spinAvailable={spinAvailable}
+            coins={farmState.coins}
+            onSpinWheel={onSpinWheel}
+          />
         )}
 
         {eventsTab === 'achievements' && (
@@ -1586,26 +1715,26 @@ export const GardenBoardSet: React.FC<GardenBoardSetProps> = ({
       <GameFloatingBoard
         isOpen={activeBoard === 'guide'}
         onClose={onClose}
-        title={lang === 'th' ? 'คู่มือสวนคาเฟ่ & เกษตรผสมผสาน' : 'Garden Cafe Guide'}
+        title={lang === 'th' ? 'คู่มือเมืองอาชีพแสนสนุก' : 'Career Valley & Farm Guide'}
         maxWidth="max-w-lg"
       >
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
           <div className="rounded-xl border border-[#d6b37c]/70 bg-white/85 dark:bg-stone-900/80 p-3 space-y-1">
-            <p className="font-black text-emerald-700 dark:text-emerald-300">1. ห่วงโซ่เกษตร → คาเฟ่</p>
+            <p className="font-black text-emerald-700 dark:text-emerald-300">1. เกษตร · ประมง · แปรรูป</p>
             <p className="text-[11px] text-[#7c5c3e] dark:text-stone-300">
-              ปลูกอัญชัน ใบเตย มะพร้าว มะม่วง → แปรรูปที่ศาลาชาสมุนไพร / ครัวขนมไทย → ชงเสิร์ฟที่คาเฟ่ในสวน
+              ปลูกผักบุ้ง พริก กะเพรา กล้วย แตงโม สับปะรด เลี้ยงปลานิลและกุ้งแม่น้ำ ทำต้มยำกุ้ง ปลาย่าง และเครื่องดื่มคาเฟ่
             </p>
           </div>
           <div className="rounded-xl border border-[#d6b37c]/70 bg-white/85 dark:bg-stone-900/80 p-3 space-y-1">
-            <p className="font-black text-amber-700 dark:text-amber-300">2. เสิร์ฟลูกค้า & ขายริมสวน</p>
+            <p className="font-black text-amber-700 dark:text-amber-300">2. สายอาชีพ & ทุนสร้างกิจการ</p>
             <p className="text-[11px] text-[#7c5c3e] dark:text-stone-300">
-              แตะโต๊ะคาเฟ่หรือรถส่งของเพื่อขายผลผลิตและเครื่องดื่ม รับเหรียญ ดาว และเพชรไปแลกรางวัลครู
+              ใช้บัตรทุนสร้างกิจการรับเงินตั้งต้น พิมพ์เขียว และวัตถุดิบ เพื่อลองสลับทำอาชีพประมง เชฟ ช่างฝีมือ หรือค้าขายออนไลน์
             </p>
           </div>
           <div className="rounded-xl border border-[#d6b37c]/70 bg-white/85 dark:bg-stone-900/80 p-3 space-y-1">
-            <p className="font-black text-sky-700 dark:text-sky-300">3. วินัยเรียนช่วยสวนโต</p>
+            <p className="font-black text-sky-700 dark:text-sky-300">3. 8 วิชาชีวิต & วินัยการเรียน</p>
             <p className="text-[11px] text-[#7c5c3e] dark:text-stone-300">
-              เช็กชื่อตรงเวลา ส่งการบ้าน และสะสมความดี เปิดกล่องเสบียงรับน้ำ ปุ๋ยทองคำ ×2 และพิมพ์เขียวใหม่
+              ตอบคำถาม 8 วิชาในชีวิตจริงเพื่อรับเหรียญ-น้ำ-XP และเปิดกล่องเสบียงรับปุ๋ยทองคำ ×2
             </p>
           </div>
           <div className="rounded-xl border border-[#d6b37c]/70 bg-white/85 dark:bg-stone-900/80 p-3 space-y-1">
@@ -1614,6 +1743,119 @@ export const GardenBoardSet: React.FC<GardenBoardSetProps> = ({
               แตะหรือลากนิ้วผ่านแปลงเพื่อรดน้ำ-เก็บเกี่ยวรวดเดียว และแตะบนอาคารผลิตเพื่อรับสินค้าที่เสร็จทันที
             </p>
           </div>
+        </div>
+      </GameFloatingBoard>
+
+      {/* 10. CAREERS & BUSINESS STARTUP CAPITAL HUB */}
+      <GameFloatingBoard
+        isOpen={activeBoard === 'careers'}
+        onClose={onClose}
+        title={lang === 'th' ? 'สายอาชีพ & ทุนสร้างกิจการ' : 'Careers & Startup Business Capital'}
+        subtitle={`อาชีพปัจจุบัน: ${activeCareer.nameTh} · บัตรทุนสร้างกิจการ ${capitalTokens} ใบ`}
+        icon={<GardenCareerIcon className="w-6 h-6" />}
+        maxWidth="max-w-3xl"
+      >
+        <div className="rounded-2xl border border-[#d6b37c] bg-gradient-to-r from-emerald-50 via-amber-50 to-sky-50 dark:from-stone-900 dark:to-stone-800 p-3 flex flex-wrap items-center justify-between gap-2.5">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <GardenCapitalTokenIcon className="w-9 h-9 shrink-0" />
+            <div className="min-w-0">
+              <p className="text-xs font-black text-[#45270f] dark:text-amber-50">
+                บัตรทุนสร้างกิจการ (Startup Capital): <span className="text-emerald-700 dark:text-emerald-300 tabular-nums">{capitalTokens} ใบ</span>
+              </p>
+              <p className="text-[11px] text-[#7c5c3e] dark:text-stone-300">
+                ใช้ 1 บัตรทุนเพื่อรับเงิน เสบียง พิมพ์เขียวอาคาร และวัตถุดิบตั้งต้นลองทำอาชีพใหม่!
+              </p>
+            </div>
+          </div>
+          {onBuyCapitalToken && (
+            <button
+              type="button"
+              disabled={farmState.coins < CAPITAL_TOKEN_BUY_COST}
+              onClick={onBuyCapitalToken}
+              className="min-h-[36px] px-3 rounded-xl bg-amber-500 hover:bg-amber-600 disabled:opacity-45 text-white text-xs font-black cursor-pointer shrink-0 shadow-sm tabular-nums"
+            >
+              แลก +1 บัตรทุน ({CAPITAL_TOKEN_BUY_COST}🪙)
+            </button>
+          )}
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          {CAREER_CATALOG.map((career) => {
+            const isCurrent = activeCareer.id === career.id;
+            const isGranted = claimedGrants.has(career.id);
+            const seedCount = Object.values(career.grantSeeds).reduce((s, v) => s + (v || 0), 0);
+            const goodsCount = Object.values(career.grantGoods).reduce((s, v) => s + (v || 0), 0);
+            const barnCount = Object.values(career.grantBarn).reduce((s, v) => s + (v || 0), 0);
+            return (
+              <div
+                key={career.id}
+                className={`rounded-2xl border-2 p-3 flex flex-col justify-between gap-2.5 transition ${
+                  isCurrent
+                    ? 'border-emerald-600 bg-emerald-50/80 dark:bg-emerald-950/35'
+                    : 'border-[#d6b37c]/80 bg-white/90 dark:bg-stone-900/85'
+                }`}
+              >
+                <div className="space-y-1">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-xs sm:text-sm font-black text-[#45270f] dark:text-amber-50 truncate">
+                        {career.nameTh}
+                      </p>
+                      <p className="text-[10px] font-bold" style={{ color: career.accentColor }}>
+                        {career.roleTagTh}
+                      </p>
+                    </div>
+                    {isCurrent && (
+                      <span className="px-2 py-0.5 rounded-full bg-emerald-600 text-white text-[10px] font-black shrink-0">
+                        กำลังทำอยู่ ✓
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-[#7c5c3e] dark:text-stone-300">{career.descTh}</p>
+                  <div className="rounded-xl bg-amber-50/90 dark:bg-stone-800 border border-[#d6b37c]/50 px-2.5 py-1.5 text-[10px] font-bold text-[#5c4026] dark:text-amber-200 tabular-nums space-y-0.5">
+                    <p>
+                      ทุนตั้งต้น: +{career.grantCoins}🪙 · +{career.grantStars}★ · +{career.grantWater}💧 · +{career.grantFertilizer}✨
+                    </p>
+                    <p className="truncate">
+                      พิมพ์เขียว: {career.unlockBlueprints.map((bId) => BUILDING_MAP[bId]?.nameTh).join(', ')}
+                      {seedCount + barnCount + goodsCount > 0 ? ` · ไอเทมตั้งต้น +${seedCount + barnCount + goodsCount}` : ''}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1.5">
+                  {onSwitchCareer && (
+                    <button
+                      type="button"
+                      disabled={isCurrent}
+                      onClick={() => onSwitchCareer(career.id)}
+                      className={`min-h-[34px] px-2.5 rounded-xl text-[11px] font-black cursor-pointer transition ${
+                        isCurrent
+                          ? 'bg-emerald-100 text-emerald-800 cursor-default'
+                          : 'border border-[#d6b37c] bg-white hover:bg-amber-50 text-[#45270f]'
+                      }`}
+                    >
+                      {isCurrent ? 'อาชีพหลัก' : 'สลับอาชีพ'}
+                    </button>
+                  )}
+                  {onClaimCareerGrant && (
+                    <button
+                      type="button"
+                      disabled={isGranted || capitalTokens < 1}
+                      onClick={() => onClaimCareerGrant(career.id)}
+                      className="flex-1 min-h-[34px] px-2.5 rounded-xl bg-[#15803d] hover:bg-[#166534] disabled:opacity-45 disabled:cursor-not-allowed text-white text-[11px] font-black cursor-pointer transition"
+                    >
+                      {isGranted
+                        ? 'รับทุนตั้งต้นแล้ว ✓'
+                        : capitalTokens >= 1
+                          ? 'รับทุนตั้งต้น (1 บัตรทุน)'
+                          : 'บัตรทุนไม่พอ'}
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
         </div>
       </GameFloatingBoard>
     </>

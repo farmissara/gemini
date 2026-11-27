@@ -574,20 +574,20 @@ export const INTERACTIVE_GUIDE_TOPICS: Record<string, InteractiveGuideTopic> = {
   },
   school_farm: {
     id: 'school_farm',
-    titleTh: 'ฟาร์มโรงเรียนแสนสนุก (School Farm & Town)',
-    titleEn: 'School Farm & Town',
+    titleTh: 'เมืองอาชีพแสนสนุก (Career Valley & Farm)',
+    titleEn: 'Career Valley & Farm',
     audience: 'all',
     mood: 'celebrate',
     targetTab: 'school_farm',
-    summaryTh: 'เกมทำฟาร์มและสร้างเมืองที่ผูกกับการเช็กชื่อ การส่งการบ้าน และคะแนนความประพฤติจริง',
-    summaryEn: 'Isometric farm & town game powered by real attendance, homework, and merit points.',
+    summaryTh: 'เกมจำลองอาชีพ เกษตรผสมผสาน ประมง คาเฟ่ และทุนสร้างกิจการที่ผูกกับการเรียนรู้จริง',
+    summaryEn: 'Isometric career, farming, fishery & business simulation powered by real learning discipline.',
     howToTh: [
-      'กดเปิดกล่องเสบียงจากวินัยวันนี้เพื่อรับน้ำ ปุ๋ย เมล็ด และดาวเมือง',
-      'ปลูก รดน้ำ เก็บเกี่ยวผลผลิตส่งออเดอร์โรงเรียน และสร้างเมืองห้องเรียน',
+      'กดเปิดกล่องเสบียงและบัตรทุนสร้างกิจการเพื่อรับน้ำ ปุ๋ย เมล็ด และทุนเริ่มต้น',
+      'ปลูกผักผลไม้ ทำประมง แปรรูปสินค้า และสลับสายอาชีพเพื่อสร้างกิจการใหม่ๆ',
     ],
     howToEn: [
-      'Claim daily supplies from attendance, homework, and merit points.',
-      'Plant, water, harvest, deliver market orders, and expand your town.',
+      'Claim daily supplies and business capital tokens from learning discipline.',
+      'Farm crops, fish at the pond & pier, craft goods, and switch career paths.',
     ],
   },
   socratic_tutor: {
