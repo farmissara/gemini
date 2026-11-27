@@ -357,7 +357,7 @@ export const AdminDailyDashboardView: React.FC<AdminDailyDashboardViewProps> = (
           >
             <span className="flex items-center gap-2">
               <QrCode className="w-3.5 h-3.5 shrink-0" />
-              <span>{lang === 'th' ? 'เช็คชื่อเข้า-ออก' : 'Check-in'}</span>
+              <span>{lang === 'th' ? 'เช็คชื่อเข้า/ออกโรงเรียน' : 'School Check-in / Out'}</span>
             </span>
             <ArrowRight className="w-4 h-4 shrink-0" />
           </button>

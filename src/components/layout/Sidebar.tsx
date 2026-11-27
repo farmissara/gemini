@@ -570,8 +570,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
         },
         {
           id: 'attendance',
-          labelTh: 'เช็คชื่อ',
-          labelEn: 'Attendance',
+          labelTh: 'เช็คชื่อเข้า/ออกโรงเรียน',
+          labelEn: 'School Check-in / Out',
           shortLabelTh: 'เช็กชื่อ',
           shortLabelEn: 'Check-in',
           icon: QrCode,

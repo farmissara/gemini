@@ -73,6 +73,12 @@ import {
   sanitizeSchoolCampusGates,
 } from '../lib/schoolGps';
 import {
+  TEACHER_PERIOD_CHECKIN_EVENT,
+  findTeacherPeriodCheckin,
+  recordTeacherPeriodCheck,
+} from '../lib/teacherPeriodCheckinStore';
+import { resolveSlotStudents } from '../lib/timetableAttendanceStatus';
+import {
   checkDistanceToClassroomGps,
   findClassroomGpsConfig,
   saveClassroomGpsConfig,
@@ -686,9 +692,23 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
   ]);
 
   const periodStudentIds: string[] = useMemo(() => {
+    const resolveFromSlot = () => {
+      const matchedSlot = timetableSlots.find(
+        (slot) =>
+          slot.periodNumber === selectedPeriod &&
+          ((slot.courseId && slot.courseId === selectedCourse.id) ||
+            (Boolean(slot.courseCode && selectedCourse.code) &&
+              slot.courseCode.trim().toLowerCase() === selectedCourse.code.trim().toLowerCase()))
+      );
+      if (!matchedSlot) return [];
+      return resolveSlotStudents(matchedSlot, courses, students).map((s) => s.id);
+    };
+
     if (effectiveRole === 'teacher') {
       if (!periodFilteredCourses.some((course) => course.id === selectedCourse.id)) return [];
-      return getCourseRosterStudentIds(selectedCourse, students);
+      const rosterIds = getCourseRosterStudentIds(selectedCourse, students);
+      if (rosterIds.length > 0) return rosterIds;
+      return resolveFromSlot();
     }
     if (selectedCourse.enrolledStudentIds && selectedCourse.enrolledStudentIds.length > 0) {
       return selectedCourse.enrolledStudentIds;
@@ -698,8 +718,65 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
       const roomStudents = students.filter((s) => (s.room || '').trim().toLowerCase() === targetRoom);
       if (roomStudents.length > 0) return roomStudents.map((s) => s.id);
     }
-    return [];
-  }, [effectiveRole, periodFilteredCourses, selectedCourse, students]);
+    const slotIds = resolveFromSlot();
+    return slotIds.length > 0 ? slotIds : students.map((s) => s.id);
+  }, [effectiveRole, periodFilteredCourses, selectedCourse, selectedPeriod, timetableSlots, courses, students]);
+
+  const [teacherPeriodTick, setTeacherPeriodTick] = useState(0);
+  useEffect(() => {
+    const onUpdated = () => setTeacherPeriodTick((t) => t + 1);
+    window.addEventListener(TEACHER_PERIOD_CHECKIN_EVENT, onUpdated);
+    return () => window.removeEventListener(TEACHER_PERIOD_CHECKIN_EVENT, onUpdated);
+  }, []);
+
+  const teacherPeriodCheckStatus = useMemo(() => {
+    void teacherPeriodTick;
+    if (!isStaffUser) {
+      return { hasCheckIn: false, hasCheckOut: false };
+    }
+    const teacherKey = ownTeacher?.id || currentUser?.id || 'usr-teacher';
+    const rec = findTeacherPeriodCheckin({
+      schoolId: activeSchoolId,
+      teacherId: teacherKey,
+      courseId: selectedCourse.id,
+      courseCode: selectedCourse.code,
+      periodNumber: selectedPeriod,
+      date: periodDate,
+    });
+    const verifiedAnyCheckIn = periodAttendance.some(
+      (p) =>
+        p.courseId === selectedCourse.id &&
+        p.periodNumber === selectedPeriod &&
+        p.date === periodDate &&
+        (p.recordType || 'check_in') === 'check_in' &&
+        (p.verifiedByTeacherId === teacherKey || p.verifiedByTeacherId === currentUser?.id)
+    );
+    const verifiedAnyCheckOut = periodAttendance.some(
+      (p) =>
+        p.courseId === selectedCourse.id &&
+        p.periodNumber === selectedPeriod &&
+        p.date === periodDate &&
+        p.recordType === 'check_out' &&
+        (p.verifiedByTeacherId === teacherKey || p.verifiedByTeacherId === currentUser?.id)
+    );
+    return {
+      hasCheckIn: Boolean(rec?.checkInTime) || verifiedAnyCheckIn,
+      checkInTime: rec?.checkInTime,
+      hasCheckOut: Boolean(rec?.checkOutTime) || verifiedAnyCheckOut,
+      checkOutTime: rec?.checkOutTime,
+    };
+  }, [
+    teacherPeriodTick,
+    isStaffUser,
+    ownTeacher?.id,
+    currentUser?.id,
+    activeSchoolId,
+    selectedCourse.id,
+    selectedCourse.code,
+    selectedPeriod,
+    periodDate,
+    periodAttendance,
+  ]);
 
   const gateDailyReportRows = useMemo(
     () => buildGateAttendanceReportRows(gateRosterStudents, attendance, dailyReportDate),
@@ -817,17 +894,24 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
         (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
       if (!AudioCtx) return;
       const ctx = new AudioCtx();
+      if (ctx.state === 'suspended') {
+        void ctx.resume();
+      }
+      const now = ctx.currentTime;
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(587.33, ctx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.15);
-      gain.gain.setValueAtTime(0.2, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(880, now);
+      osc.frequency.exponentialRampToValueAtTime(1318.51, now + 0.06);
+      gain.gain.setValueAtTime(0.85, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
       osc.connect(gain);
       gain.connect(ctx.destination);
-      osc.start();
-      osc.stop(ctx.currentTime + 0.4);
+      osc.start(now);
+      osc.stop(now + 0.15);
+      window.setTimeout(() => {
+        void ctx.close().catch(() => {});
+      }, 240);
     } catch {
       // Audio fallback
     }
@@ -1923,8 +2007,33 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
     });
 
     onRecordPeriodAttendance(newRecords);
+    playChime();
     setPeriodSavedNotification(
       `บันทึกการ${actionText} ${selectedCourse.code || 'GEN-101'} (คาบที่ ${selectedPeriod}) สำเร็จ (${newRecords.length} คน)`
+    );
+    setTimeout(() => setPeriodSavedNotification(null), 5000);
+  };
+
+  const handleTeacherPeriodCheck = (targetCheckType: 'check_in' | 'check_out') => {
+    const teacherKey = ownTeacher?.id || currentUser?.id || 'usr-teacher';
+    const teacherDisplay =
+      currentUser?.fullNameTh || currentUser?.fullNameEn || ownTeacher?.fullNameTh || 'ครูผู้สอน';
+    const rec = recordTeacherPeriodCheck({
+      schoolId: activeSchoolId,
+      teacherId: teacherKey,
+      teacherName: teacherDisplay,
+      courseId: selectedCourse.id,
+      courseCode: selectedCourse.code || 'GEN-101',
+      periodNumber: selectedPeriod,
+      date: periodDate,
+      checkType: targetCheckType,
+    });
+    setPeriodCheckType(targetCheckType);
+    playChime();
+    setPeriodSavedNotification(
+      targetCheckType === 'check_in'
+        ? `เช็คชื่อเข้าคาบเรียน ${selectedCourse.code || 'GEN-101'} (คาบที่ ${selectedPeriod}) เวลา ${rec.checkInTime || ''} น. สำเร็จ — แสดงรายชื่อนักเรียน ${periodStudentIds.length} คน`
+        : `เช็คชื่อออกคาบเรียน ${selectedCourse.code || 'GEN-101'} (คาบที่ ${selectedPeriod}) เวลา ${rec.checkOutTime || ''} น. สำเร็จ`
     );
     setTimeout(() => setPeriodSavedNotification(null), 5000);
   };
@@ -2419,10 +2528,10 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
     if (subTab === 'period_checkin') {
       return isStaffUser
         ? lang === 'th'
-          ? 'บันทึกทั้งคาบ'
+          ? 'บันทึกเช็คชื่อคาบนี้'
           : 'Save Period'
         : lang === 'th'
-          ? 'เช็คชื่อคาบนี้'
+          ? 'เช็คชื่อเข้า/ออกคาบ'
           : 'Check Period';
     }
     return lang === 'th' ? 'ไปเช็คชื่อ' : 'Check-in';
@@ -2455,9 +2564,17 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
               <div className="min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
                   <h1 className="text-lg font-bold tracking-tight text-[var(--color-text-title)] truncate">
-                    {showAttendanceAudienceSwitch
-                      ? lang === 'th' ? 'เช็คชื่อครู/บุคลากร' : 'Staff Attendance'
-                      : lang === 'th' ? 'เช็คชื่อมือถือ & แตะบัตร NFC' : 'Mobile Attendance & NFC'}
+                    {subTab === 'period_checkin'
+                      ? lang === 'th'
+                        ? 'เช็คชื่อเข้า/ออกคาบเรียน'
+                        : 'Period Check-in / Check-out'
+                      : showAttendanceAudienceSwitch
+                        ? lang === 'th'
+                          ? 'เช็คชื่อเข้า/ออกโรงเรียน (ครู/บุคลากร)'
+                          : 'Staff School Check-in / Out'
+                        : lang === 'th'
+                          ? 'เช็คชื่อเข้า/ออกโรงเรียน & แตะบัตร NFC'
+                          : 'School Check-in / Out & NFC'}
                   </h1>
                   <span className="text-xs text-[var(--color-text-muted)] tabular-nums whitespace-nowrap">
                     · {new Date().toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' })}
@@ -2549,8 +2666,8 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
               className="flex items-center gap-1 overflow-x-auto no-scrollbar min-w-0"
             >
             {[
-              { id: 'selfie_mobile', icon: Camera, labelTh: 'เซลฟี่', labelEn: 'Selfie', staffOnly: false },
-              { id: 'nfc_tap', icon: Nfc, labelTh: 'แตะ NFC', labelEn: 'NFC', staffOnly: false },
+              { id: 'selfie_mobile', icon: Camera, labelTh: 'เซลฟี่เข้า/ออก รร.', labelEn: 'Selfie Gate', staffOnly: false },
+              { id: 'nfc_tap', icon: Nfc, labelTh: 'แตะบัตร NFC (รร.)', labelEn: 'NFC Gate', staffOnly: false },
               {
                 id: 'leave_request',
                 icon: FileText,
@@ -2559,9 +2676,9 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                 badge: scopedLeaveRequests.filter((r) => r.status === 'pending').length,
                 staffOnly: false,
               },
-              { id: 'teacher_proxy', icon: UserCheck, labelTh: 'ลงชื่อแทน', labelEn: 'Proxy', staffOnly: true },
+              { id: 'teacher_proxy', icon: UserCheck, labelTh: 'เช็คเข้า/ออกโรงเรียนแทน', labelEn: 'School Proxy', staffOnly: true },
               { id: 'daily_report', icon: ClipboardCheck, labelTh: 'รายงานรายวัน', labelEn: 'Daily report', staffOnly: true },
-              { id: 'period_checkin', icon: Users, labelTh: 'รายคาบ', labelEn: 'Periods', staffOnly: false },
+              { id: 'period_checkin', icon: Users, labelTh: 'เช็คชื่อเข้า/ออกคาบเรียน', labelEn: 'Period Check-in/Out', staffOnly: false },
               {
                 id: 'corrections',
                 icon: FileEdit,
@@ -2657,8 +2774,8 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
             className="flex-1 min-w-0 flex items-center gap-1 p-0.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] overflow-x-auto no-scrollbar"
           >
             {[
-              { id: 'selfie_mobile', icon: Camera, labelTh: 'เซลฟี่', labelEn: 'Selfie', staffOnly: false },
-              { id: 'nfc_tap', icon: Nfc, labelTh: 'NFC', labelEn: 'NFC', staffOnly: false },
+              { id: 'selfie_mobile', icon: Camera, labelTh: 'เซลฟี่ รร.', labelEn: 'Selfie', staffOnly: false },
+              { id: 'nfc_tap', icon: Nfc, labelTh: 'NFC รร.', labelEn: 'NFC', staffOnly: false },
               {
                 id: 'leave_request',
                 icon: FileText,
@@ -2667,9 +2784,9 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                 badge: scopedLeaveRequests.filter((r) => r.status === 'pending').length,
                 staffOnly: false,
               },
-              { id: 'teacher_proxy', icon: UserCheck, labelTh: 'ลงแทน', labelEn: 'Proxy', staffOnly: true },
+              { id: 'teacher_proxy', icon: UserCheck, labelTh: 'เข้า/ออก รร.', labelEn: 'School Proxy', staffOnly: true },
               { id: 'daily_report', icon: ClipboardCheck, labelTh: 'รายงาน', labelEn: 'Daily', staffOnly: true },
-              { id: 'period_checkin', icon: Users, labelTh: 'รายคาบ', labelEn: 'Periods', staffOnly: false },
+              { id: 'period_checkin', icon: Users, labelTh: 'เข้า/ออกคาบ', labelEn: 'Periods', staffOnly: false },
               {
                 id: 'corrections',
                 icon: FileEdit,
@@ -3207,6 +3324,8 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
           onUpdatePeriodFlexConfig={handleUpdatePeriodFlexConfig}
           periodCustomTimes={periodCustomTimes}
           onSetStudentPeriodCustomTime={handleSetStudentPeriodCustomTime}
+          teacherPeriodCheckStatus={teacherPeriodCheckStatus}
+          onTeacherPeriodCheck={handleTeacherPeriodCheck}
           onOpenPeriodCorrection={({ targetScope, issueType, originalTime }) => {
             setCorrectionPrefill({
               targetScope,

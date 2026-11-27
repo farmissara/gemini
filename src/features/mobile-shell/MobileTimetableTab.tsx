@@ -706,7 +706,7 @@ export const MobileTimetableTab: React.FC<MobileTimetableTabProps> = ({
               className="min-h-[38px] px-3 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer whitespace-nowrap shrink-0"
             >
               <LogIn className="w-3.5 h-3.5" />
-              <span>{lang === 'th' ? 'เช็คอินรายคาบ' : 'Period Check-in'}</span>
+              <span>{lang === 'th' ? 'เช็คชื่อเข้า/ออกคาบเรียน' : 'Period Check-in/Out'}</span>
             </button>
           )}
           <TableActionMenu
@@ -1137,7 +1137,7 @@ export const MobileTimetableTab: React.FC<MobileTimetableTabProps> = ({
                                 className="min-h-[32px] px-2.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-[11px] font-bold inline-flex items-center gap-1 cursor-pointer"
                               >
                                 <UserCheck className="w-3 h-3" />
-                                <span>เช็กชื่อคาบ</span>
+                                <span>เช็คชื่อเข้า/ออกคาบ</span>
                               </button>
                             </div>
                           );
@@ -1163,10 +1163,10 @@ export const MobileTimetableTab: React.FC<MobileTimetableTabProps> = ({
                             )}
                             <span>
                               {status.hasCheckIn && status.hasCheckOut
-                                ? 'เช็คอิน/เอาท์แล้ว · อัปเดต'
+                                ? 'เช็คชื่อเข้า/ออกคาบแล้ว · อัปเดต'
                                 : nextCheckType === 'check_out'
-                                  ? 'เช็คเอาท์คาบเรียน'
-                                  : 'เช็คอินเข้าคาบเรียน'}
+                                  ? 'เช็คชื่อออกคาบเรียน'
+                                  : 'เช็คชื่อเข้าคาบเรียน'}
                             </span>
                           </button>
                         </div>
@@ -2097,7 +2097,7 @@ export const MobileTimetableTab: React.FC<MobileTimetableTabProps> = ({
                         className="flex-1 min-h-[44px] px-4 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold inline-flex items-center justify-center gap-1.5 cursor-pointer"
                       >
                         <UserCheck className="w-4 h-4" />
-                        <span>รายชื่อ / เช็กชื่อนักเรียน</span>
+                        <span>รายชื่อ / เช็คชื่อเข้า/ออกคาบ</span>
                       </button>
                     )}
                     {canCheckinNow && (
@@ -2122,10 +2122,10 @@ export const MobileTimetableTab: React.FC<MobileTimetableTabProps> = ({
                         )}
                         <span>
                           {status.hasCheckIn && status.hasCheckOut
-                            ? 'เช็คอิน/เอาท์แล้ว · อัปเดต'
+                            ? 'เช็คชื่อเข้า/ออกคาบแล้ว · อัปเดต'
                             : nextCheckType === 'check_out'
-                              ? 'เช็คเอาท์คาบเรียน'
-                              : 'เช็คอินเข้าคาบเรียน'}
+                              ? 'เช็คชื่อออกคาบเรียน'
+                              : 'เช็คชื่อเข้าคาบเรียน'}
                         </span>
                       </button>
                     )}

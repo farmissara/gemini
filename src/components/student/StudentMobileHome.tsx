@@ -579,14 +579,14 @@ export const StudentMobileHome: React.FC<StudentMobileHomeProps> = ({
                   <span>
                     {featuredCheckStatus?.hasCheckIn && featuredCheckStatus?.hasCheckOut
                       ? lang === 'th'
-                        ? 'เช็คชื่อคาบนี้แล้ว · ดูรายละเอียด'
+                        ? 'เช็คชื่อเข้า/ออกคาบแล้ว · ดูรายละเอียด'
                         : 'Period checked · View details'
                       : featuredNextCheckType === 'check_out'
                         ? lang === 'th'
-                          ? 'เช็คเอาท์ออกจากคาบนี้'
+                          ? 'เช็คชื่อออกคาบเรียน'
                           : 'Check out of period'
                         : lang === 'th'
-                          ? 'เช็คชื่อเข้าคาบนี้'
+                          ? 'เช็คชื่อเข้าคาบเรียน'
                           : 'Check in to period'}
                   </span>
                 </button>

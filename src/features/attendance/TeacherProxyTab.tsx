@@ -87,9 +87,9 @@ export const TeacherProxyTab: React.FC<TeacherProxyTabProps> = ({
           <div>
             <h3 className="type-section-title flex items-center gap-1.5">
               <UserCheck className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
-              <span>ลงชื่อเข้า-ออกแทนนักเรียน</span>
+              <span>เช็คชื่อเข้า/ออกโรงเรียนแทนนักเรียน</span>
             </h3>
-            <p className="type-meta mt-0.5">ระบุรหัสนักเรียนเพื่อยืนยันตัวตนก่อนบันทึกเวลา</p>
+            <p className="type-meta mt-0.5">ระบุรหัสนักเรียนเพื่อบันทึกเวลาเข้า/ออกโรงเรียนแทนนักเรียน</p>
           </div>
           <button
             type="button"

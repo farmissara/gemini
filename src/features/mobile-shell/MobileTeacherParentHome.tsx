@@ -190,8 +190,8 @@ export const MobileTeacherParentHome: React.FC<MobileTeacherParentHomeProps> = (
 
   return (
     <div className="flex flex-col gap-2.5 pb-2 animate-in fade-in duration-150">
-      {/* 1. COMPACT PRIMARY ACTION BUTTON */}
-      {(canSelfCheckin || canViewTimetable) && (
+      {/* 1. COMPACT PRIMARY ACTION BUTTON (Non-teacher only; teachers use Period Check-in & bottom bar directly) */}
+      {!isTeacher && (canSelfCheckin || canViewTimetable) && (
         <button
           type="button"
           onClick={() => {
@@ -207,17 +207,13 @@ export const MobileTeacherParentHome: React.FC<MobileTeacherParentHomeProps> = (
                 ? lang === 'th'
                   ? 'ตารางเรียนวันนี้'
                   : 'Today Timetable'
-                : isTeacher
+                : isParent
                   ? lang === 'th'
-                    ? 'เช็คชื่อเข้าสอน'
-                    : 'Class Check-in'
-                  : isParent
-                    ? lang === 'th'
-                      ? 'ดูเวลาเข้า-ออกบุตรหลาน'
-                      : 'Child Attendance'
-                    : lang === 'th'
-                      ? 'เช็คชื่อเข้า-ออก'
-                      : 'Check-in & Out'}
+                    ? 'ดูเวลาเข้า-ออกบุตรหลาน'
+                    : 'Child Attendance'
+                  : lang === 'th'
+                    ? 'เช็คชื่อเข้า/ออกโรงเรียน'
+                    : 'School Check-in & Out'}
             </span>
           </div>
           <div className="flex items-center gap-1.5 shrink-0">
@@ -313,10 +309,10 @@ export const MobileTeacherParentHome: React.FC<MobileTeacherParentHomeProps> = (
                   className="min-h-[68px] p-3 rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] hover:border-[var(--color-primary)] text-left flex flex-col justify-between cursor-pointer"
                 >
                   <span className="text-[11px] font-semibold text-[var(--color-text-muted)]">
-                    {lang === 'th' ? 'เช็คชื่อนักเรียน' : 'Student attendance'}
+                    {lang === 'th' ? 'เช็คชื่อเข้า/ออกโรงเรียน' : 'School Check-in/Out'}
                   </span>
                   <span className="text-xs font-bold text-[var(--color-text-title)]">
-                    {lang === 'th' ? 'เข้า-ออกโรงเรียน · รายคาบ' : 'School entry/exit · Periods'}
+                    {lang === 'th' ? 'เช็คชื่อเข้า/ออกโรงเรียน · คาบเรียน' : 'School · Period Check-in/Out'}
                   </span>
                 </button>
               )}
@@ -435,10 +431,10 @@ export const MobileTeacherParentHome: React.FC<MobileTeacherParentHomeProps> = (
               </FutureIconBadge>
               <div className="min-w-0">
                 <p className="text-xs font-bold text-[var(--color-text-title)] truncate">
-                  {lang === 'th' ? 'เช็คชื่อนักเรียน' : 'Student attendance'}
+                  {lang === 'th' ? 'เช็คชื่อเข้า/ออกโรงเรียน' : 'School Check-in/Out'}
                 </p>
                 <p className="text-[11px] text-[var(--color-text-muted)] truncate">
-                  {lang === 'th' ? 'เข้า-ออกโรงเรียน · รายคาบ' : 'School entry/exit · Periods'}
+                  {lang === 'th' ? 'เข้า/ออกโรงเรียน · เข้า/ออกคาบเรียน' : 'School & Period Check-in/Out'}
                 </p>
               </div>
             </button>

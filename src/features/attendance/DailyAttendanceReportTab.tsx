@@ -209,7 +209,7 @@ export const DailyAttendanceReportTab: React.FC<DailyAttendanceReportTabProps> =
       <section className="saas-card">
         <div className="saas-card-header">
           <div>
-            <h3 className="type-card-title">{lang === 'th' ? 'เข้า-ออกโรงเรียน' : 'School arrival / departure'}</h3>
+            <h3 className="type-card-title">{lang === 'th' ? 'เช็คชื่อเข้า/ออกโรงเรียน' : 'School Check-in / Check-out'}</h3>
             <p className="type-meta mt-0.5">
               {lang === 'th'
                 ? `เช็คเข้า ${gateRows.filter((row) => row.checkIn).length}/${gateRows.length} · เช็คออก ${gateRows.filter((row) => row.checkOut).length}/${gateRows.length}`
@@ -290,7 +290,7 @@ export const DailyAttendanceReportTab: React.FC<DailyAttendanceReportTabProps> =
       <section className="saas-card">
         <div className="saas-card-header">
           <div>
-            <h3 className="type-card-title">{lang === 'th' ? 'เช็คชื่อรายคาบตามตาราง' : 'Scheduled lesson attendance'}</h3>
+            <h3 className="type-card-title">{lang === 'th' ? 'เช็คชื่อเข้า/ออกคาบเรียนตามตาราง' : 'Period Check-in / Check-out'}</h3>
             <p className="type-meta mt-0.5">
               {lang === 'th'
                 ? `บันทึกแล้ว ${periodRecordedCount}/${periodExpectedCount} รายการ`

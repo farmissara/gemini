@@ -779,7 +779,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
           <div className="min-w-0">
             <div className="module-category-kicker">04 · เช็กชื่อ กิจการ &amp; สุขภาพ</div>
             <h1 className="type-page-title truncate">
-              การเข้าเรียน &amp; สแกนประตู
+              เช็คชื่อเข้า/ออกโรงเรียน &amp; สแกนประตู
             </h1>
           </div>
         </div>

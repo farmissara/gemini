@@ -7,6 +7,12 @@ import { resolveMatchedTeacherForUser, slotMatchesLoggedInTeacher } from '../../
 import { isTabEnabledByFeatureFlags } from '../../lib/schoolFeatureFlags';
 import { getModuleTone } from '../../lib/moduleTheme';
 import { CALENDAR_NOTES_UPDATED_EVENT } from '../../lib/calendarNotes';
+import {
+  TEACHER_PERIOD_CHECKIN_EVENT,
+  findTeacherPeriodCheckin,
+  recordTeacherPeriodCheck,
+} from '../../lib/teacherPeriodCheckinStore';
+import { playNotificationChime } from '../../lib/pushNotifications';
 import { getMobileTabForNavTab } from '../../lib/mobileNavigation';
 import {
   readSavedNavState,
@@ -447,12 +453,36 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
     [holidaySyncTick, todayBangkokStr, activeSchool.id]
   );
 
+  const [teacherPeriodTick, setTeacherPeriodTick] = useState(0);
+  useEffect(() => {
+    const onUpdated = () => setTeacherPeriodTick((t) => t + 1);
+    window.addEventListener(TEACHER_PERIOD_CHECKIN_EVENT, onUpdated);
+    return () => window.removeEventListener(TEACHER_PERIOD_CHECKIN_EVENT, onUpdated);
+  }, []);
+
   const openPeriodCheckinFromSlot = (
     slot: TimetableSlot,
     dateValue: string,
     checkType: 'check_in' | 'check_out'
   ) => {
-    const resolvedCourseId = slot.courseId || scopedCourses.find((c) => c.code === slot.courseCode)?.id;
+    const resolvedCourseId =
+      slot.courseId || scopedCourses.find((c) => c.code === slot.courseCode)?.id || slot.courseCode;
+    if (currentRole === 'teacher') {
+      const teacherKey = matchedTeacher?.id || currentUser?.id || 'usr-teacher';
+      const teacherDisplay =
+        currentUser?.fullNameTh || currentUser?.fullNameEn || matchedTeacher?.fullNameTh || 'ครูผู้สอน';
+      recordTeacherPeriodCheck({
+        schoolId: activeSchool.id,
+        teacherId: teacherKey,
+        teacherName: teacherDisplay,
+        courseId: resolvedCourseId,
+        courseCode: slot.courseCode,
+        periodNumber: slot.periodNumber,
+        date: dateValue,
+        checkType,
+      });
+      playNotificationChime();
+    }
     setMobileAttendanceInitialSubTab('period_checkin');
     setMobilePeriodCourseId(resolvedCourseId);
     setMobilePeriodNumber(slot.periodNumber);
@@ -471,6 +501,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
   };
 
   const getSlotTodayCheckStatus = (slot: TimetableSlot, dateValue: string) => {
+    void teacherPeriodTick;
     const resolvedCourseId =
       slot.courseId || scopedCourses.find((c) => c.code === slot.courseCode)?.id || slot.courseCode;
     const matches = periodAttendance.filter(
@@ -479,9 +510,24 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
         rec.periodNumber === slot.periodNumber &&
         (rec.courseId === resolvedCourseId || rec.courseCode === slot.courseCode)
     );
+    const teacherRec =
+      currentRole === 'teacher'
+        ? findTeacherPeriodCheckin({
+            schoolId: activeSchool.id,
+            teacherId: matchedTeacher?.id || currentUser?.id || 'usr-teacher',
+            courseId: resolvedCourseId,
+            courseCode: slot.courseCode,
+            periodNumber: slot.periodNumber,
+            date: dateValue,
+          })
+        : undefined;
     return {
-      hasCheckIn: matches.some((m) => (m.recordType || 'check_in') === 'check_in'),
-      hasCheckOut: matches.some((m) => m.recordType === 'check_out'),
+      hasCheckIn:
+        Boolean(teacherRec?.checkInTime) ||
+        matches.some((m) => (m.recordType || 'check_in') === 'check_in'),
+      hasCheckOut:
+        Boolean(teacherRec?.checkOutTime) ||
+        matches.some((m) => m.recordType === 'check_out'),
     };
   };
 

@@ -897,15 +897,15 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
       tone: featured.activity.isActive || featured.partialCheckedIn ? 'warning' : 'info',
       title:
         lang === 'th'
-          ? `เตือนเช็คชื่อเข้า-ออกตามเวลา (${completedCount}/${totalCount} เข้า · ${fullDoneCount}/${totalCount} ครบ)`
+          ? `เตือนเช็คชื่อเข้า/ออกคาบเรียน (${completedCount}/${totalCount} เข้า · ${fullDoneCount}/${totalCount} ครบ)`
           : `Period Check-in Reminder (${completedCount}/${totalCount})`,
       message: `คาบ ${featured.slot.periodNumber} (${timeRange}) · ${featured.slot.courseCode} ${featured.slot.courseTitleTh || featured.slot.courseTitleEn} — ${phaseNote}`,
       actionLabel:
         featured.nextCheckType === 'check_out'
-          ? 'เช็คเอาท์คาบนี้'
+          ? 'เช็คชื่อออกคาบนี้'
           : featured.activity.isActive
-            ? 'เช็คอินตอนนี้'
-            : 'เช็คอินคาบนี้',
+            ? 'เช็คชื่อเข้าคาบตอนนี้'
+            : 'เช็คชื่อเข้าคาบนี้',
       durationMs: 7000,
       onAction: () => triggerSlotCheckin(featured.slot, todayBangkokDate, featured.nextCheckType),
     });
@@ -1915,7 +1915,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                   className="seg-tab-btn"
                 >
                   <UserCheck className="h-3.5 w-3.5 shrink-0" />
-                  <span>เช็กชื่อรายคาบ</span>
+                  <span>เช็คชื่อเข้า/ออกคาบเรียน</span>
                 </button>
               )}
               <button

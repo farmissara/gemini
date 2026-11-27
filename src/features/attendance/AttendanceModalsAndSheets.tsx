@@ -968,7 +968,7 @@ export const AttendanceQuickActionBar: React.FC<AttendanceQuickActionBarProps> =
         className="min-h-[36px] px-3 rounded-lg bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-title)] shadow-2xs text-xs font-semibold flex items-center gap-1.5 cursor-pointer whitespace-nowrap hover:bg-[var(--color-card-subtle)]"
       >
         <QrCode className="w-3.5 h-3.5 text-[var(--color-primary-text)] shrink-0" />
-        <span>{lang === 'th' ? 'เช็คชื่อรายคาบ (QR)' : 'Period Check-in'}</span>
+        <span>{lang === 'th' ? 'เช็คชื่อเข้า/ออกคาบเรียน (QR)' : 'Period Check-in / Out'}</span>
       </button>
 
       <button

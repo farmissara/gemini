@@ -98,39 +98,47 @@ export const ContinuousRapidScannerModal: React.FC<ContinuousRapidScannerModalPr
   const cameraRequestRef = useRef(0);
   const lastScannedTimeMapRef = useRef<Map<string, number>>(new Map());
 
-  // Web Audio Synthesizer for Rapid Beep
+  // Web Audio Synthesizer for Rapid Beep (loud and crisp short alert)
   const playBeep = (isSuccess: boolean) => {
     if (!soundEnabled) return;
     try {
-      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      const AudioContextClass =
+        window.AudioContext ||
+        (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
       if (!AudioContextClass) return;
       const ctx = new AudioContextClass();
+      if (ctx.state === 'suspended') {
+        void ctx.resume().catch(() => {});
+      }
       const now = ctx.currentTime;
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
 
       if (isSuccess) {
-        // High cheerful ding (880Hz -> 1760Hz)
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(880, now);
-        osc.frequency.exponentialRampToValueAtTime(1760, now + 0.12);
-        gain.gain.setValueAtTime(0.25, now);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+        // Loud, crisp short ding (987Hz -> 1760Hz)
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(987.77, now);
+        osc.frequency.exponentialRampToValueAtTime(1760, now + 0.06);
+        gain.gain.setValueAtTime(0.85, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.13);
         osc.connect(gain);
         gain.connect(ctx.destination);
         osc.start(now);
-        osc.stop(now + 0.22);
+        osc.stop(now + 0.13);
       } else {
-        // Warning buzz (320Hz)
+        // Short, loud warning buzz (340Hz)
         osc.type = 'sawtooth';
-        osc.frequency.setValueAtTime(320, now);
-        gain.gain.setValueAtTime(0.2, now);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+        osc.frequency.setValueAtTime(340, now);
+        gain.gain.setValueAtTime(0.7, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.16);
         osc.connect(gain);
         gain.connect(ctx.destination);
         osc.start(now);
-        osc.stop(now + 0.3);
+        osc.stop(now + 0.16);
       }
+      window.setTimeout(() => {
+        void ctx.close().catch(() => {});
+      }, 240);
     } catch {
       // Audio error ignored
     }

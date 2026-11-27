@@ -149,12 +149,12 @@ export const PeriodTimeMissionsCard: React.FC<PeriodTimeMissionsCardProps> = ({
       {
         id: 'period-checkin',
         label: completed
-          ? lang === 'th' ? 'อัปเดตคาบ' : 'Update attendance'
+          ? lang === 'th' ? 'อัปเดตคาบ' : 'Update period'
           : nextCheckType === 'check_out'
-            ? lang === 'th' ? 'เช็คเอาท์' : 'Check out'
+            ? lang === 'th' ? 'เช็คชื่อออกคาบ' : 'Period Check-out'
             : isActiveNow
-              ? lang === 'th' ? 'เช็คอินตอนนี้' : 'Check in now'
-              : lang === 'th' ? 'เช็คอินคาบ' : 'Check in',
+              ? lang === 'th' ? 'เช็คชื่อเข้าคาบตอนนี้' : 'Check in now'
+              : lang === 'th' ? 'เช็คชื่อเข้าคาบ' : 'Period Check-in',
         icon: nextCheckType === 'check_out'
           ? <LogOut className="w-4 h-4" />
           : <LogIn className="w-4 h-4" />,
@@ -165,7 +165,7 @@ export const PeriodTimeMissionsCard: React.FC<PeriodTimeMissionsCardProps> = ({
     if (!checkStatus.hasCheckOut && !partialCheckedIn) {
       items.push({
         id: 'period-checkout',
-        label: lang === 'th' ? 'เช็คเอาท์' : 'Check out',
+        label: lang === 'th' ? 'เช็คชื่อออกคาบ' : 'Period Check-out',
         icon: <LogOut className="w-4 h-4" />,
         onClick: () => onTriggerCheckin(slot, targetDateStr, 'check_out'),
         dividerBefore: true,
@@ -179,8 +179,8 @@ export const PeriodTimeMissionsCard: React.FC<PeriodTimeMissionsCardProps> = ({
       <section
         aria-label={
           lang === 'th'
-            ? 'ภารกิจเช็คชื่อเข้า-ออกตามเวลา'
-            : 'Timed Period Check-in Missions'
+            ? 'เช็คชื่อเข้า/ออกคาบเรียนตามเวลา'
+            : 'Period Check-in/Out Missions'
         }
         className={`rounded-xl border px-3 py-1.5 flex flex-wrap items-center justify-between gap-2 transition ${
           activeMissions.length > 0
@@ -203,7 +203,7 @@ export const PeriodTimeMissionsCard: React.FC<PeriodTimeMissionsCardProps> = ({
             )}
           </span>
           <span className="text-xs font-bold text-[var(--color-text-title)] whitespace-nowrap">
-            {lang === 'th' ? 'ภารกิจเช็คอินรายคาบ' : 'Period Missions'}
+            {lang === 'th' ? 'เช็คชื่อเข้า/ออกคาบเรียน' : 'Period Check-in/Out'}
           </span>
           <span className="text-[11px] text-[var(--color-text-muted)] tabular-nums whitespace-nowrap">
             เข้า {completedCount}/{totalCount} · ครบ {fullDoneCount}/{totalCount}
@@ -262,10 +262,10 @@ export const PeriodTimeMissionsCard: React.FC<PeriodTimeMissionsCardProps> = ({
               )}
               <span>
                 {featuredMission.nextCheckType === 'check_out'
-                  ? 'เช็คเอาท์'
+                  ? 'เช็คชื่อออกคาบ'
                   : featuredMission.activity.isActive
-                    ? 'เช็คอินตอนนี้'
-                    : 'เช็คอิน'}
+                    ? 'เช็คชื่อเข้าคาบตอนนี้'
+                    : 'เช็คชื่อเข้าคาบ'}
               </span>
             </button>
           )}
@@ -288,8 +288,8 @@ export const PeriodTimeMissionsCard: React.FC<PeriodTimeMissionsCardProps> = ({
       <section
         aria-label={
           lang === 'th'
-            ? 'ภารกิจเช็คชื่อเข้า-ออกตามเวลา'
-            : 'Timed Period Check-in Missions'
+            ? 'เช็คชื่อเข้า/ออกคาบเรียนตามเวลา'
+            : 'Period Check-in/Out Missions'
         }
         className={`rounded-xl border bg-[var(--color-card)] overflow-hidden ${
           activeMissions.length > 0
@@ -311,7 +311,7 @@ export const PeriodTimeMissionsCard: React.FC<PeriodTimeMissionsCardProps> = ({
               <Target className="w-3.5 h-3.5 text-[var(--color-primary-text)] shrink-0" />
             )}
             <h3 className="text-xs font-bold text-[var(--color-text-title)] truncate">
-              {lang === 'th' ? 'ภารกิจเช็คชื่อตามเวลา' : 'Period Missions'}
+              {lang === 'th' ? 'เช็คชื่อเข้า/ออกคาบเรียน' : 'Period Check-in/Out'}
             </h3>
             <span className="text-[11px] font-semibold text-[var(--color-text-muted)] tabular-nums shrink-0">
               {fullDoneCount}/{totalCount}
@@ -440,8 +440,8 @@ export const PeriodTimeMissionsCard: React.FC<PeriodTimeMissionsCardProps> = ({
     <section
       aria-label={
         lang === 'th'
-          ? 'ภารกิจเช็คชื่อเข้า-ออกตามเวลา'
-          : 'Timed Period Check-in Missions'
+          ? 'เช็คชื่อเข้า/ออกคาบเรียนตามเวลา'
+          : 'Period Check-in/Out Missions'
       }
       className={`rounded-2xl border bg-[var(--color-card)] overflow-hidden transition ${
         activeMissions.length > 0
@@ -475,8 +475,8 @@ export const PeriodTimeMissionsCard: React.FC<PeriodTimeMissionsCardProps> = ({
             <div className="flex flex-wrap items-center gap-1.5">
               <h3 className="text-sm font-bold text-[var(--color-text-title)] truncate">
                 {lang === 'th'
-                  ? 'ภารกิจเช็คชื่อเข้า-ออกตามเวลา'
-                  : 'Period Check-in Missions'}
+                  ? 'เช็คชื่อเข้า/ออกคาบเรียน'
+                  : 'Period Check-in/Out'}
               </h3>
               {activeMissions.length > 0 && (
                 <span className="text-[10px] font-bold text-rose-600 dark:text-rose-400 tabular-nums">

@@ -119,7 +119,7 @@ export const NfcTapAttendanceTab: React.FC<NfcTapAttendanceTabProps> = ({
             </div>
             <div className="min-w-0">
               <h2 className="type-section-title truncate">
-                {lang === 'th' ? 'เช็คชื่อด้วยบัตร NFC' : 'NFC ID Card Check-in'}
+                {lang === 'th' ? 'เช็คชื่อเข้า/ออกโรงเรียน (บัตร NFC)' : 'School NFC Check-in / Out'}
               </h2>
               <p className="type-meta truncate">
                 {isStaffUser

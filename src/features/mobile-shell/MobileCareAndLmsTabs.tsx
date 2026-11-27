@@ -149,7 +149,7 @@ export const MobileAttendanceHistoryTab: React.FC<MobileAttendanceHistoryTabProp
               : 'text-[var(--color-text-muted)]'
           }`}
         >
-          เข้า-ออกโรงเรียน ({scopedAttendance.length})
+          เช็คชื่อเข้า/ออกโรงเรียน ({scopedAttendance.length})
         </button>
         <button
           type="button"
@@ -160,7 +160,7 @@ export const MobileAttendanceHistoryTab: React.FC<MobileAttendanceHistoryTabProp
               : 'text-[var(--color-text-muted)]'
           }`}
         >
-          เข้าเรียนรายคาบ ({scopedPeriodAttendance.length})
+          เช็คชื่อเข้า/ออกคาบเรียน ({scopedPeriodAttendance.length})
         </button>
       </div>
 
