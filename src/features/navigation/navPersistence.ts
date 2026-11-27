@@ -35,6 +35,7 @@ const VALID_NAV_TABS = new Set<string>([
   'teachers',
   'courses',
   'games',
+  'school_farm',
   'study_streak',
   'boss_raid',
   'ai_diagnostic',

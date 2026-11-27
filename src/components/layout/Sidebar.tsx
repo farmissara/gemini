@@ -47,6 +47,7 @@ import {
   Package,
   Tag,
   X,
+  Sprout,
   LucideIcon,
 } from 'lucide-react';
 import { UserRole, AppLanguage, SchoolFeatureFlags } from '../../types';
@@ -96,6 +97,7 @@ export type NavTab =
   | 'infirmary'
   | 'subject_labs'
   | 'games'
+  | 'school_farm'
   | 'boss_raid'
   | 'hall_of_fame'
   | 'portfolio'
@@ -219,7 +221,7 @@ const ADMIN_SIMPLIFIED_TABS = new Set<NavTab>([
   'announcements',
 ]);
 
-const ARCADE_TABS = new Set<NavTab>(['games', 'boss_raid', 'study_streak', 'hall_of_fame']);
+const ARCADE_TABS = new Set<NavTab>(['games', 'school_farm', 'boss_raid', 'study_streak', 'hall_of_fame']);
 // Settings & executive report sub-routes remain searchable via sidebar search and global Cmd+K, without cluttering the default tree
 const SETTINGS_DEEP_LINK_TABS = new Set<NavTab>([
   'school_permissions',
@@ -831,6 +833,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
           labelTh: 'ภารกิจแก้โจทย์ท้าทายกลุ่ม',
           labelEn: 'Co-op Challenge Quest',
           icon: Swords,
+          roles: ['super_admin', 'admin', 'teacher', 'student', 'parent'],
+        },
+        {
+          id: 'school_farm',
+          labelTh: 'ฟาร์มโรงเรียน & สร้างเมือง',
+          labelEn: 'School Farm & Town',
+          shortLabelTh: 'ฟาร์มโรงเรียน',
+          shortLabelEn: 'Farm',
+          icon: Sprout,
           roles: ['super_admin', 'admin', 'teacher', 'student', 'parent'],
         },
         {

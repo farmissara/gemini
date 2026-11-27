@@ -642,6 +642,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
         activeGameView === 'battle_royale_3d' ||
         activeGameView === '1v1_arena') &&
         !isModuleEnabled('games')) ||
+      (activeGameView === 'school_farm' && !isModuleEnabled('school_farm')) ||
       (activeGameView === 'boss_raid' && !isModuleEnabled('boss_raid')) ||
       (activeGameView === 'subject_labs' && !isModuleEnabled('subject_labs')) ||
       (activeGameView === 'hall_of_fame' && !isModuleEnabled('hall_of_fame'));
@@ -1656,6 +1657,12 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
           currentUser={currentUser}
           activeSchool={activeSchool}
           linkedStudents={linkedStudents}
+          students={students}
+          attendance={attendance}
+          periodAttendance={periodAttendance}
+          homeworkSubmissions={homeworkSubmissions}
+          assignments={assignments}
+          behaviorRecords={behaviorRecords}
           portfolioItems={portfolioItems}
           questions={questions}
           playerScores={playerScores}

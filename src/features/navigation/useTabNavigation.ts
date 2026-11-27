@@ -387,7 +387,7 @@ export function useTabNavigation({
     if (currentRole === 'student') {
       const blockedByPolicy =
         ((tab === 'attendance' || tab === 'mobile_checkin') && !schoolPermissions.student_self_checkin) ||
-        (['games', 'study_streak', 'boss_raid', 'realworld_quests', 'subject_labs', 'ai_diagnostic', 'socratic_tutor', 'hall_of_fame'].includes(tab) &&
+        (['games', 'school_farm', 'study_streak', 'boss_raid', 'realworld_quests', 'subject_labs', 'ai_diagnostic', 'socratic_tutor', 'hall_of_fame'].includes(tab) &&
           !schoolPermissions.student_treasure_game) ||
         (tab === 'homework' && !schoolPermissions.student_submit_homework) ||
         (tab === 'portfolio' && !schoolPermissions.student_upload_portfolio) ||

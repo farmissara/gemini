@@ -1360,6 +1360,7 @@ export type SchoolFeatureFlagKey =
   | 'games_3d'
   | 'boss_raid'
   | 'study_streak'
+  | 'school_farm'
   | 'hall_of_fame'
   | 'ai_diagnostic'
   | 'socratic_tutor'

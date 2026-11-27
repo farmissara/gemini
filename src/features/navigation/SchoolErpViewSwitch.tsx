@@ -81,6 +81,7 @@ const SystemSettingsView = lazyNamed(() => import('../../views/SystemSettingsVie
 const AiDiagnosticLearningView = lazyNamed(() => import('../../views/AiDiagnosticLearningView'), 'AiDiagnosticLearningView');
 const HallOfFame3DView = lazyNamed(() => import('../../views/HallOfFame3DView'), 'HallOfFame3DView');
 const StudyStreakQuestPassView = lazyNamed(() => import('../../views/StudyStreakQuestPassView'), 'StudyStreakQuestPassView');
+const SchoolFarmGameView = lazyNamed(() => import('../../views/SchoolFarmGameView'), 'SchoolFarmGameView');
 const CoopBossRaidView = lazyNamed(() => import('../../views/CoopBossRaidView'), 'CoopBossRaidView');
 const SocraticTutorView = lazyNamed(() => import('../../views/SocraticTutorView'), 'SocraticTutorView');
 const RealWorldSnapQuestView = lazyNamed(() => import('../../views/RealWorldSnapQuestView'), 'RealWorldSnapQuestView');
@@ -786,6 +787,24 @@ export const SchoolErpViewSwitch: React.FC<SchoolErpViewSwitchProps> = (props) =
                   currentUserName={currentUser?.fullNameTh || currentUser?.fullNameEn || 'นักเรียน'}
                   schoolId={activeSchool.id}
                   currentUser={currentUser}
+                  playerScores={viewPlayerScores}
+                  onEarnRewards={props.onEarnRewards}
+                />
+              )}
+
+              {currentTab === 'school_farm' && (
+                <SchoolFarmGameView
+                  lang={lang}
+                  currentUser={currentUser}
+                  currentRole={currentRole}
+                  activeSchool={activeSchool}
+                  students={props.schoolStudents ?? viewStudents}
+                  attendance={props.schoolAttendance ?? viewAttendance}
+                  periodAttendance={viewPeriodAttendance}
+                  homeworkSubmissions={viewHomeworkSubmissions}
+                  assignments={viewAssignments}
+                  behaviorRecords={viewBehaviorRecords}
+                  questions={schoolQuestions}
                   playerScores={viewPlayerScores}
                   onEarnRewards={props.onEarnRewards}
                 />

@@ -244,6 +244,15 @@ export const FEATURE_FLAG_LABELS: FeatureFlagDescriptor[] = [
     tabIds: ['study_streak'],
   },
   {
+    key: 'school_farm',
+    category: 'learning_games',
+    minLevel: 'level_3',
+    labelTh: 'ฟาร์มโรงเรียนแสนสนุก (School Farm & Town)',
+    labelEn: 'School Farm & Town',
+    descTh: 'เกมทำฟาร์มและสร้างเมืองที่ผูกกับเวลาเรียน การบ้าน และคะแนนความดี',
+    tabIds: ['school_farm'],
+  },
+  {
     key: 'hall_of_fame',
     category: 'learning_games',
     minLevel: 'level_3',
@@ -318,6 +327,7 @@ const LEVEL_1_FEATURES: Record<SchoolFeatureFlagKey, boolean> = {
   games_3d: false,
   boss_raid: false,
   study_streak: false,
+  school_farm: false,
   hall_of_fame: false,
   ai_diagnostic: false,
   socratic_tutor: false,
@@ -344,6 +354,7 @@ const LEVEL_3_FEATURES: Record<SchoolFeatureFlagKey, boolean> = {
   games_3d: true,
   boss_raid: true,
   study_streak: true,
+  school_farm: true,
   hall_of_fame: true,
 };
 

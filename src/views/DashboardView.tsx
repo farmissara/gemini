@@ -2837,6 +2837,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               actionLabel: lang === 'th' ? 'ดูเควสต์' : 'View Quests',
             },
             {
+              id: 'school_farm',
+              title: lang === 'th' ? 'ฟาร์มโรงเรียนแสนสนุก' : 'School Farm & Town',
+              desc: lang === 'th' ? 'ปลูกผัก เลี้ยงสัตว์ สร้างเมืองด้วยวินัยเข้าเรียน ส่งการบ้าน และความดี' : 'Build your farm & town powered by real attendance, homework & merits',
+              icon: Sparkles,
+              color: 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700',
+              badge: 'Farm & Town',
+              actionLabel: lang === 'th' ? 'เข้าสู่ฟาร์ม' : 'Enter Farm',
+            },
+            {
               id: 'boss_raid',
               title: 'Co-op Boss Raid',
               desc: lang === 'th' ? 'รวมพลังตอบโจทย์ความยากระดับบอส ประสานงานพิชิตด่านร่วมกัน' : 'Collaborative classroom quiz raid with team boss battles',

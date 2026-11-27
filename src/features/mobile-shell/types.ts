@@ -61,6 +61,7 @@ export type MobileTab =
 
 export type ActiveGameView =
   | 'hub'
+  | 'school_farm'
   | 'arcade_studio'
   | 'battle_royale_3d'
   | '1v1_arena'

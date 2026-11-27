@@ -572,6 +572,24 @@ export const INTERACTIVE_GUIDE_TOPICS: Record<string, InteractiveGuideTopic> = {
     howToTh: ['เช็คภารกิจรายวันและกดรับรางวัลเมื่อทำสำเร็จ'],
     howToEn: ['Complete daily learning quests and claim your XP/gem rewards.'],
   },
+  school_farm: {
+    id: 'school_farm',
+    titleTh: 'ฟาร์มโรงเรียนแสนสนุก (School Farm & Town)',
+    titleEn: 'School Farm & Town',
+    audience: 'all',
+    mood: 'celebrate',
+    targetTab: 'school_farm',
+    summaryTh: 'เกมทำฟาร์มและสร้างเมืองที่ผูกกับการเช็กชื่อ การส่งการบ้าน และคะแนนความประพฤติจริง',
+    summaryEn: 'Isometric farm & town game powered by real attendance, homework, and merit points.',
+    howToTh: [
+      'กดเปิดกล่องเสบียงจากวินัยวันนี้เพื่อรับน้ำ ปุ๋ย เมล็ด และดาวเมือง',
+      'ปลูก รดน้ำ เก็บเกี่ยวผลผลิตส่งออเดอร์โรงเรียน และสร้างเมืองห้องเรียน',
+    ],
+    howToEn: [
+      'Claim daily supplies from attendance, homework, and merit points.',
+      'Plant, water, harvest, deliver market orders, and expand your town.',
+    ],
+  },
   socratic_tutor: {
     id: 'socratic_tutor',
     titleTh: 'ติวเตอร์ถาม-ตอบเชิงคิด (Socratic Tutor)',

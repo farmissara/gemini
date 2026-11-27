@@ -13,6 +13,7 @@ const CONSENT_FORMS_PREFIX = 'eduverse_consent_forms_v1_';
 const CONSENT_RESPONSES_PREFIX = 'eduverse_consent_responses_v1_';
 const LAB_COMPLETION_PREFIX = 'eduverse_completed_lab_quests_v1_';
 const STUDY_STREAK_PREFIX = 'baanpakkru_study_streak_pass_v1_';
+const SCHOOL_FARM_PREFIX = 'baanpakkru_school_farm_v1_';
 
 export const CAMPUS_DATA_UPDATED_EVENT = 'baanpakkru:campus-data-updated';
 
@@ -42,7 +43,7 @@ const safeWrite = <T>(key: string, value: T): void => {
 
 async function upsertCampusRecordToSupabase(params: {
   schoolId: string;
-  recordKind: 'consent_form' | 'consent_response' | 'risk_intervention' | 'lab_completion' | 'study_streak_pass';
+  recordKind: 'consent_form' | 'consent_response' | 'risk_intervention' | 'lab_completion' | 'study_streak_pass' | 'school_farm';
   recordId: string;
   studentId?: string | null;
   payload: unknown;
@@ -123,6 +124,8 @@ export async function hydrateCampusDataFromSupabase(schoolId: string): Promise<v
       }
     } else if (row.record_kind === 'study_streak_pass' && typeof row.record_id === 'string') {
       safeWrite(`${STUDY_STREAK_PREFIX}${schoolId}_${row.record_id}`, payload);
+    } else if (row.record_kind === 'school_farm' && typeof row.record_id === 'string') {
+      safeWrite(`${SCHOOL_FARM_PREFIX}${schoolId}_${row.record_id}`, payload);
     }
   }
 
@@ -324,6 +327,46 @@ export const saveStudyStreakPassState = (
     studentId: studentId || null,
     payload: state,
   });
+};
+
+// School Farm & Town State (synced per user & school, plus school neighbor roster)
+export const loadSchoolFarmState = <T>(schoolId: string, userId: string): T | null => {
+  if (!schoolId || !userId) return null;
+  return safeRead<T | null>(`${SCHOOL_FARM_PREFIX}${schoolId}_${userId}`, null);
+};
+
+export const saveSchoolFarmState = <T>(
+  schoolId: string,
+  userId: string,
+  state: T,
+  studentId?: string
+): void => {
+  if (!schoolId || !userId) return;
+  safeWrite(`${SCHOOL_FARM_PREFIX}${schoolId}_${userId}`, state);
+  void upsertCampusRecordToSupabase({
+    schoolId,
+    recordKind: 'school_farm',
+    recordId: userId,
+    studentId: studentId || null,
+    payload: state,
+  });
+};
+
+export const listSchoolFarmSnapshots = <T>(schoolId: string): T[] => {
+  if (typeof window === 'undefined' || !schoolId) return [];
+  const prefix = `${SCHOOL_FARM_PREFIX}${schoolId}_`;
+  const results: T[] = [];
+  try {
+    for (let i = 0; i < window.localStorage.length; i += 1) {
+      const key = window.localStorage.key(i);
+      if (!key || !key.startsWith(prefix)) continue;
+      const parsed = safeRead<T | null>(key, null);
+      if (parsed) results.push(parsed);
+    }
+  } catch {
+    // ignore storage iteration errors
+  }
+  return results;
 };
 
 export const cleanupStudentCampusData = (schoolId: string, studentId: string): void => {

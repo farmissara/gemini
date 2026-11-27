@@ -13,12 +13,18 @@ import {
   Rocket,
   ShoppingBag,
   SpellCheck2,
+  Sprout,
   Swords,
   Trophy,
 } from 'lucide-react';
 import type {
   AppLanguage,
+  Assignment,
+  AttendanceRecord,
   AuthUser,
+  BehaviorRecord,
+  HomeworkSubmission,
+  PeriodAttendanceRecord,
   PlayerScore,
   PortfolioItem,
   QuizQuestion,
@@ -36,6 +42,7 @@ import { EduBattleRoyale3DView } from '../../views/EduBattleRoyale3DView';
 import { CoopBossRaidView } from '../../views/CoopBossRaidView';
 import { SubjectLabSimulationView } from '../../views/SubjectLabSimulationView';
 import { HallOfFame3DView } from '../../views/HallOfFame3DView';
+import { SchoolFarmGameView } from '../../views/SchoolFarmGameView';
 import type { ActiveGameView, MobileTab } from './types';
 
 interface MobileGamesHubTabProps {
@@ -221,6 +228,35 @@ export const MobileGamesHubTab: React.FC<MobileGamesHubTabProps> = ({
         </div>
       </section>
 
+      {/* Featured School Farm & Town Card */}
+      {isModuleEnabled('school_farm') && (
+        <button
+          type="button"
+          onClick={() => setActiveGameView('school_farm')}
+          className="w-full p-3.5 rounded-2xl bg-[#09090B] border border-emerald-500/45 hover:border-emerald-400 text-left flex items-center justify-between gap-3 transition active:scale-[0.98] cursor-pointer"
+        >
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-11 h-11 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
+              <Sprout className="w-5 h-5" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[10px] font-mono font-bold text-emerald-300 uppercase tracking-wider">
+                School Farm & Town
+              </p>
+              <h3 className="text-sm font-black text-white truncate">
+                {lang === 'th' ? 'ฟาร์มโรงเรียนแสนสนุก (ปลูก & สร้างเมือง)' : 'School Farm & Town'}
+              </h3>
+              <p className="text-[11px] text-zinc-400 truncate">
+                {lang === 'th'
+                  ? 'เช็กชื่อรับน้ำ · ส่งการบ้านรับเมล็ด · ความดีสร้างเมือง'
+                  : 'Attendance water · Homework seeds · Merit stars'}
+              </p>
+            </div>
+          </div>
+          <ChevronRight className="w-5 h-5 text-emerald-400 shrink-0" />
+        </button>
+      )}
+
       {/* Featured 1-Tap Live Classroom 6-Digit PIN Card */}
       {isModuleEnabled('games') && (
         <button
@@ -397,6 +433,12 @@ interface MobileFullscreenGameOverlayProps {
   currentUser: AuthUser | null;
   activeSchool: School;
   linkedStudents: Student[];
+  students?: Student[];
+  attendance?: AttendanceRecord[];
+  periodAttendance?: PeriodAttendanceRecord[];
+  homeworkSubmissions?: HomeworkSubmission[];
+  assignments?: Assignment[];
+  behaviorRecords?: BehaviorRecord[];
   portfolioItems: PortfolioItem[];
   questions: QuizQuestion[];
   playerScores: PlayerScore[];
@@ -421,6 +463,12 @@ export const MobileFullscreenGameOverlay: React.FC<MobileFullscreenGameOverlayPr
   currentUser,
   activeSchool,
   linkedStudents,
+  students = [],
+  attendance = [],
+  periodAttendance = [],
+  homeworkSubmissions = [],
+  assignments = [],
+  behaviorRecords = [],
   portfolioItems,
   questions,
   playerScores,
@@ -444,6 +492,26 @@ export const MobileFullscreenGameOverlay: React.FC<MobileFullscreenGameOverlayPr
         viewName={`mobile-game:${activeGameView}`}
         onBackHome={onExitGame}
       >
+        {activeGameView === 'school_farm' && (
+          <div className="h-full w-full overflow-hidden flex flex-col bg-[var(--color-bg)]">
+            <SchoolFarmGameView
+              lang={lang}
+              currentUser={currentUser}
+              currentRole={currentRole}
+              activeSchool={activeSchool}
+              students={students.length > 0 ? students : linkedStudents}
+              attendance={attendance}
+              periodAttendance={periodAttendance}
+              homeworkSubmissions={homeworkSubmissions}
+              assignments={assignments}
+              behaviorRecords={behaviorRecords}
+              questions={questions}
+              playerScores={playerScores}
+              onEarnRewards={onEarnRewards}
+              onExit={onExitGame}
+            />
+          </div>
+        )}
         {activeGameView === 'battle_royale_3d' && (
           <div className="h-full w-full overflow-hidden">
             <EduBattleRoyale3DView

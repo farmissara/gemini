@@ -57,6 +57,7 @@ export const MODULE_TONE_MAP: Record<NavTab, ModuleTone> = {
   subject_labs: 'tone-5',
   realworld_quests: 'tone-5',
   study_streak: 'tone-5',
+  school_farm: 'tone-2',
   boss_raid: 'tone-5',
   games: 'tone-5',
   portfolio: 'tone-5',

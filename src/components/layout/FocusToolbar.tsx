@@ -229,6 +229,7 @@ const EXTRA_ACTIVE_LABELS: Partial<Record<NavTab, { th: string; en: string }>> =
   ai_diagnostic: { th: 'วิเคราะห์จุดอ่อน AI', en: 'AI Diagnostic' },
   realworld_quests: { th: 'ภารกิจนอกห้องเรียน', en: 'Snap Quest' },
   study_streak: { th: 'ภารกิจสะสมวินัย', en: 'Study Streak' },
+  school_farm: { th: 'ฟาร์มโรงเรียน', en: 'School Farm' },
   games: { th: 'เกมฝึกทักษะ', en: 'Learning Games' },
   boss_raid: { th: 'โหมดรวมพลังตอบคำถาม', en: 'Co-op Quiz' },
   hall_of_fame: { th: 'หอเกียรติยศ', en: 'Hall of Fame' },

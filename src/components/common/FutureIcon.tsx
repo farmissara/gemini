@@ -196,6 +196,16 @@ export const FutureNavIcon: React.FC<FutureNavIconProps> = ({
           </>
         );
 
+      case 'school_farm':
+        return (
+          <>
+            <path d="M12 19V10.5" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" />
+            <path d="M12 11.5C8.5 11.5 5.5 9.2 5.5 5.8C8.8 5.8 11.5 8 12 11.5Z" fill={`url(#${gradId})`} fillOpacity={fillOpacity} stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+            <path d="M12 12.5C15.5 12.5 18.5 10.2 18.5 6.8C15.2 6.8 12.5 9 12 12.5Z" fill={`url(#${gradId})`} fillOpacity={fillOpacity} stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+            <path d="M5.5 19.5H18.5" stroke="currentColor" strokeWidth="1.85" strokeLinecap="round" />
+          </>
+        );
+
       case 'games':
       case 'boss_raid':
         return (
