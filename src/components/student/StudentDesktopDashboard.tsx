@@ -1,6 +1,5 @@
 import React, { useMemo } from 'react';
 import {
-  ArrowUpRight,
   Award,
   BookOpen,
   Calendar,
@@ -37,6 +36,11 @@ import { getBangkokClockSnapshot, getTimetableSlotActivityStatus } from '../../l
 import { type ThaiHoliday } from '../../lib/thaiHolidays';
 import { readLocalCareerQuestState } from '../../lib/careerQuestStore';
 import { POPULAR_CAREERS } from '../../data/careerQuestData';
+import AttendancePhoto from '../AttendancePhoto';
+import {
+  formatShortAttendanceTime,
+  resolveRecordPhotoSource,
+} from '../../lib/personalAttendanceHistory';
 import { FutureIconBadge, FutureNavIcon } from '../common/FutureIcon';
 
 interface StudentDesktopDashboardProps {
@@ -133,6 +137,9 @@ export const StudentDesktopDashboard: React.FC<StudentDesktopDashboardProps> = (
       scopedAttendance.find((a) => a.date === todayStr && a.recordType !== 'check_out') ||
       scopedAttendance.find((a) => a.date === todayStr) ||
       null;
+    const todayCheckOutRecord =
+      scopedAttendance.find((a) => a.date === todayStr && a.recordType === 'check_out') ||
+      null;
 
     return {
       total,
@@ -143,6 +150,7 @@ export const StudentDesktopDashboard: React.FC<StudentDesktopDashboardProps> = (
       onTimePct,
       latePct,
       todayRecord,
+      todayCheckOutRecord,
     };
   }, [scopedAttendance, todayStr]);
 
@@ -414,18 +422,6 @@ export const StudentDesktopDashboard: React.FC<StudentDesktopDashboardProps> = (
               <span>{lang === 'th' ? 'ดูตารางเรียนวันนี้' : 'View Today’s Schedule'}</span>
             </button>
           ) : null}
-
-          {canViewTimetable && (
-            <button
-              type="button"
-              onClick={() => onNavigate('timetable')}
-              className="btn-tool-neutral min-h-12 w-full sm:w-auto justify-center px-4 py-2.5 rounded-xl text-sm font-semibold inline-flex items-center gap-1.5 whitespace-nowrap shrink-0"
-            >
-              <FutureNavIcon tab="timetable" size={15} className="text-[var(--color-primary-text)]" />
-              <span>{lang === 'th' ? 'ตารางเรียน' : 'Timetable'}</span>
-              <ArrowUpRight className="w-4 h-4 text-[var(--color-text-muted)] shrink-0" />
-            </button>
-          )}
         </div>
       </section>
 
@@ -554,30 +550,53 @@ export const StudentDesktopDashboard: React.FC<StudentDesktopDashboardProps> = (
             </div>
           </div>
 
-          {/* Hairline Footer: Today's Check-in Status */}
+          {/* Hairline Footer: Today's Check-in/Out Photo Thumbnail & Timestamps */}
           <div className="pt-4 border-t border-[var(--color-border)] flex items-center justify-between gap-3">
-            {attendanceStats.todayRecord ? (
-              <>
-                <div className="min-w-0">
-                  <p className="text-xs font-medium text-[var(--color-text-title)] truncate tabular-nums">
-                    {lang === 'th'
-                      ? `เช็คชื่อวันนี้แล้ว เวลา ${attendanceStats.todayRecord.time} น.`
-                      : `Checked in today at ${attendanceStats.todayRecord.time}`}
-                  </p>
-                  <p className="text-xs text-[var(--color-text-muted)] truncate">
-                    {attendanceStats.todayRecord.location?.geofenceZoneName ||
-                      (lang === 'th' ? 'บันทึกเรียบร้อย' : 'Verified')}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => onOpenPhotoRecord(attendanceStats.todayRecord!)}
-                  className="text-[13px] font-medium text-[var(--color-primary-text)] rounded-lg px-2 py-1 -mx-2 -my-1 hover:bg-[var(--color-primary-light)] transition cursor-pointer whitespace-nowrap shrink-0"
-                >
-                  {lang === 'th' ? 'ดูหลักฐาน' : 'View proof'}
-                </button>
-              </>
-            ) : (
+            {attendanceStats.todayRecord ? (() => {
+              const rec = attendanceStats.todayRecord!;
+              const outRec = attendanceStats.todayCheckOutRecord;
+              const inTimeText = formatShortAttendanceTime(rec.time) || rec.time;
+              const outTimeText = formatShortAttendanceTime(outRec?.time || rec.checkOutTime);
+              const photoSrc = resolveRecordPhotoSource(rec);
+              return (
+                <>
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    {photoSrc && (
+                      <button
+                        type="button"
+                        onClick={() => onOpenPhotoRecord(rec)}
+                        className="w-10 h-10 rounded-lg overflow-hidden border border-[var(--color-border)] bg-[var(--color-card-subtle)] shrink-0 cursor-pointer hover:ring-2 hover:ring-[var(--color-primary)] transition"
+                        aria-label={lang === 'th' ? 'ดูรูปถ่ายเช็คชื่อวันนี้' : 'View check-in photo'}
+                      >
+                        <AttendancePhoto
+                          src={photoSrc}
+                          alt={rec.userName || rec.date}
+                          className="w-full h-full object-cover"
+                        />
+                      </button>
+                    )}
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold text-[var(--color-text-title)] truncate tabular-nums">
+                        {lang === 'th'
+                          ? `เข้า ${inTimeText} น.${outTimeText ? ` · ออก ${outTimeText} น.` : ''}`
+                          : `In ${inTimeText}${outTimeText ? ` · Out ${outTimeText}` : ''}`}
+                      </p>
+                      <p className="text-xs text-[var(--color-text-muted)] truncate">
+                        {rec.location?.geofenceZoneName ||
+                          (lang === 'th' ? 'บันทึกเรียบร้อย' : 'Verified')}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => onOpenPhotoRecord(outRec || rec)}
+                    className="text-[13px] font-medium text-[var(--color-primary-text)] rounded-lg px-2 py-1 -mx-2 -my-1 hover:bg-[var(--color-primary-light)] transition cursor-pointer whitespace-nowrap shrink-0"
+                  >
+                    {lang === 'th' ? 'ดูรูป / หลักฐาน' : 'View proof'}
+                  </button>
+                </>
+              );
+            })() : (
               <>
                 <p className="text-xs text-[var(--color-text-muted)] truncate">
                   {todayHoliday || isTodayWeekend
@@ -722,13 +741,6 @@ export const StudentDesktopDashboard: React.FC<StudentDesktopDashboardProps> = (
                     ? `ลงทะเบียนทั้งหมด ${scopedCourses.length} รายวิชา`
                     : `${scopedCourses.length} enrolled courses`}
                 </span>
-                <button
-                  type="button"
-                  onClick={() => onNavigate('gradebook')}
-                  className="font-medium text-[var(--color-primary-text)] hover:underline cursor-pointer"
-                >
-                  {lang === 'th' ? 'ดูครบทุกวิชา →' : 'All subjects →'}
-                </button>
               </div>
             </>
           ) : (

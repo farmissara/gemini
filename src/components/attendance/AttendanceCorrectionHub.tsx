@@ -29,6 +29,7 @@ import type {
 } from '../../types';
 import { getLocalDateString } from '../../lib/date';
 import {
+  ATTENDANCE_CORRECTIONS_UPDATED_EVENT,
   buildCorrectedPeriodRecord,
   createCorrectionRequest,
   getCorrectionIssueLabelTh,
@@ -158,10 +159,18 @@ export const AttendanceCorrectionHub: React.FC<AttendanceCorrectionHubProps> = (
   const [stageFilter, setStageFilter] = useState<
     'all' | 'pending_homeroom' | 'pending_admin' | 'completed'
   >('all');
+  const [staffOwnershipFilter, setStaffOwnershipFilter] = useState<'all' | 'mine'>('all');
   const [reviewRemarks, setReviewRemarks] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    setRequests(loadAttendanceCorrections(schoolId));
+    const reload = () => setRequests(loadAttendanceCorrections(schoolId));
+    reload();
+    window.addEventListener(ATTENDANCE_CORRECTIONS_UPDATED_EVENT, reload);
+    window.addEventListener('storage', reload);
+    return () => {
+      window.removeEventListener(ATTENDANCE_CORRECTIONS_UPDATED_EVENT, reload);
+      window.removeEventListener('storage', reload);
+    };
   }, [schoolId]);
 
   useEffect(() => {
@@ -409,12 +418,27 @@ export const AttendanceCorrectionHub: React.FC<AttendanceCorrectionHubProps> = (
   };
 
   const scopedRequests = useMemo(() => {
-    if (isStaff) return requests;
     const myIds = new Set(
-      [currentUser?.id, currentUser?.studentRecordId, ownStudent?.id].filter(Boolean) as string[]
+      [currentUser?.id, currentUser?.studentRecordId, ownStudent?.id, ownTeacher?.id].filter(
+        Boolean
+      ) as string[]
     );
+    if (isStaff) {
+      if (staffOwnershipFilter === 'mine') {
+        return requests.filter((r) => myIds.has(r.requesterId));
+      }
+      return requests;
+    }
     return requests.filter((r) => myIds.has(r.requesterId));
-  }, [requests, isStaff, currentUser?.id, currentUser?.studentRecordId, ownStudent?.id]);
+  }, [
+    requests,
+    isStaff,
+    staffOwnershipFilter,
+    currentUser?.id,
+    currentUser?.studentRecordId,
+    ownStudent?.id,
+    ownTeacher?.id,
+  ]);
 
   const filteredRequests = useMemo(() => {
     return scopedRequests.filter((r) => {
@@ -766,7 +790,7 @@ export const AttendanceCorrectionHub: React.FC<AttendanceCorrectionHubProps> = (
             </form>
           )}
 
-          {/* Stage filter tabs */}
+          {/* Stage filter tabs (+ All/Mine toggle for staff) */}
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="seg-tab-group overflow-x-auto no-scrollbar max-w-full">
               {(
@@ -797,6 +821,27 @@ export const AttendanceCorrectionHub: React.FC<AttendanceCorrectionHubProps> = (
                 </button>
               ))}
             </div>
+
+            {isStaff && (
+              <div className="seg-tab-group shrink-0">
+                <button
+                  type="button"
+                  data-active={staffOwnershipFilter === 'all'}
+                  onClick={() => setStaffOwnershipFilter('all')}
+                  className="seg-tab-btn"
+                >
+                  ทุกคำขอ
+                </button>
+                <button
+                  type="button"
+                  data-active={staffOwnershipFilter === 'mine'}
+                  onClick={() => setStaffOwnershipFilter('mine')}
+                  className="seg-tab-btn"
+                >
+                  คำขอของฉัน
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Requests List */}

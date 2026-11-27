@@ -4,6 +4,7 @@ import {
   BellRing,
   BookOpen,
   Calendar,
+  Camera,
   CheckCircle2,
   ChevronRight,
   Clock,
@@ -40,6 +41,11 @@ import {
   type BangkokClockSnapshot,
 } from '../../lib/timetableCalendar';
 import { isWeekendDate, type ThaiHoliday } from '../../lib/thaiHolidays';
+import { AttendancePhoto } from '../AttendancePhoto';
+import {
+  formatShortAttendanceTime,
+  resolveRecordPhotoSource,
+} from '../../lib/personalAttendanceHistory';
 import { FutureIconBadge, FutureNavIcon } from '../common/FutureIcon';
 
 interface StudentMobileHomeProps {
@@ -49,6 +55,7 @@ interface StudentMobileHomeProps {
   playerProfile?: PlayerScore;
   lang: AppLanguage;
   todayCheckin?: AttendanceRecord;
+  todayCheckout?: AttendanceRecord;
   scopedAttendance: AttendanceRecord[];
   scopedCourses: Course[];
   grades: GradeRecord[];
@@ -138,6 +145,7 @@ export const StudentMobileHome: React.FC<StudentMobileHomeProps> = ({
   playerProfile,
   lang,
   todayCheckin,
+  todayCheckout,
   scopedAttendance,
   scopedCourses,
   grades,
@@ -625,73 +633,112 @@ export const StudentMobileHome: React.FC<StudentMobileHomeProps> = ({
             </button>
           )}
 
-          {/* Compact 2-Column Side-by-Side Today Summary Strip */}
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={() => onOpenAttendanceHistory?.()}
-              disabled={!onOpenAttendanceHistory}
-              className="min-h-[68px] p-3 rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] hover:border-[var(--color-primary)] text-left flex flex-col justify-between transition active:scale-[0.98] cursor-pointer disabled:cursor-default"
-            >
-              <div className="flex items-center justify-between gap-1">
-                <span className="text-[11px] font-semibold text-[var(--color-text-muted)] truncate">
-                  {lang === 'th' ? 'มาเรียน' : 'Attendance'}
-                </span>
-                <ChevronRight className="w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0" />
-              </div>
-              <div className="flex items-baseline gap-1.5 mt-1">
-                <span className="text-xl font-bold text-[var(--color-text-title)] tabular-nums leading-none">
-                  {attendanceRate !== null ? `${attendanceRate}%` : '—'}
-                </span>
-                <span className={`text-[11px] font-semibold truncate ${attendanceStatusTone}`}>
-                  {attendanceStatusLabel}
-                </span>
-              </div>
-            </button>
+          {/* Today's School Check-in/Out Photo + Timestamp Strip & Homework Summary */}
+          <div className="space-y-2">
+            {(() => {
+              const checkInTimeText = formatShortAttendanceTime(todayCheckin?.time);
+              const checkOutTimeText = formatShortAttendanceTime(
+                todayCheckout?.time || todayCheckin?.checkOutTime
+              );
+              const checkInPhoto = todayCheckin ? resolveRecordPhotoSource(todayCheckin) : undefined;
+              const checkOutPhoto = todayCheckout ? resolveRecordPhotoSource(todayCheckout) : undefined;
+              return (
+                <button
+                  type="button"
+                  onClick={() => (onOpenAttendanceHistory ? onOpenAttendanceHistory() : onOpenCheckin())}
+                  className="w-full min-h-[64px] p-3 rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] hover:border-[var(--color-primary)] text-left flex items-center justify-between gap-3 transition active:scale-[0.99] cursor-pointer"
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    {checkInPhoto ? (
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <div className="w-11 h-11 rounded-xl overflow-hidden border border-[var(--color-border)] bg-[var(--color-card-subtle)] shrink-0">
+                          <AttendancePhoto
+                            src={checkInPhoto}
+                            alt={displayName}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                        {checkOutPhoto && (
+                          <div className="w-11 h-11 rounded-xl overflow-hidden border border-[var(--color-border)] bg-[var(--color-card-subtle)] shrink-0">
+                            <AttendancePhoto
+                              src={checkOutPhoto}
+                              alt={displayName}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="w-11 h-11 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-primary-text)] flex items-center justify-center shrink-0">
+                        <Camera className="w-4 h-4" />
+                      </div>
+                    )}
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold text-[var(--color-text-title)] truncate">
+                        {lang === 'th' ? 'เวลาเข้า-ออกโรงเรียนวันนี้' : "Today's School Check-in"}
+                      </p>
+                      <p className="text-[11px] text-[var(--color-text-muted)] tabular-nums truncate mt-0.5">
+                        {checkInTimeText
+                          ? lang === 'th'
+                            ? `เข้า ${checkInTimeText} น.${checkOutTimeText ? ` · ออก ${checkOutTimeText} น.` : ' · ยังไม่ลงเวลาออก'}`
+                            : `In ${checkInTimeText}${checkOutTimeText ? ` · Out ${checkOutTimeText}` : ''}`
+                          : lang === 'th'
+                            ? 'ยังไม่มีบันทึกวันนี้ · ดูประวัติย้อนหลัง'
+                            : 'No record today · View history'}
+                      </p>
+                    </div>
+                  </div>
+                  <span className="inline-flex items-center gap-1 text-xs font-semibold text-[var(--color-primary-text)] whitespace-nowrap shrink-0">
+                    <span>{lang === 'th' ? 'ประวัติ / แก้เวลา' : 'History'}</span>
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </span>
+                </button>
+              );
+            })()}
 
             {canAccessHomework ? (
               <button
                 type="button"
                 onClick={onOpenHomework}
-                className="min-h-[68px] p-3 rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] hover:border-[var(--color-primary)] text-left flex flex-col justify-between transition active:scale-[0.98] cursor-pointer"
+                className="w-full min-h-[54px] px-3.5 py-2.5 rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] hover:border-[var(--color-primary)] text-left flex items-center justify-between gap-2 transition active:scale-[0.99] cursor-pointer"
               >
-                <div className="flex items-center justify-between gap-1">
-                  <span className="text-[11px] font-semibold text-[var(--color-text-muted)] truncate">
-                    {lang === 'th' ? 'การบ้าน' : 'Homework'}
+                <span className="text-xs font-bold text-[var(--color-text-title)] truncate">
+                  {lang === 'th' ? 'การบ้านและงานที่มอบหมาย' : 'Homework'}
+                </span>
+                <span className="flex items-center gap-1.5 shrink-0">
+                  <span
+                    className={`text-xs font-bold tabular-nums ${
+                      pendingHomeworkCount > 0
+                        ? 'text-amber-700 dark:text-amber-400'
+                        : 'text-emerald-700 dark:text-emerald-400'
+                    }`}
+                  >
+                    {pendingHomeworkCount > 0
+                      ? lang === 'th'
+                        ? `ค้าง ${pendingHomeworkCount} ชิ้น`
+                        : `${pendingHomeworkCount} due`
+                      : lang === 'th'
+                        ? 'ส่งครบแล้ว'
+                        : 'All caught up'}
                   </span>
                   <ChevronRight className="w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0" />
-                </div>
-                <p
-                  className={`text-sm font-bold tabular-nums mt-1 truncate ${
-                    pendingHomeworkCount > 0
-                      ? 'text-amber-700 dark:text-amber-400'
-                      : 'text-emerald-700 dark:text-emerald-400'
-                  }`}
-                >
-                  {pendingHomeworkCount > 0
-                    ? lang === 'th'
-                      ? `ค้าง ${pendingHomeworkCount} ชิ้น`
-                      : `${pendingHomeworkCount} due`
-                    : lang === 'th'
-                      ? 'ส่งครบแล้ว'
-                      : 'All caught up'}
-                </p>
+                </span>
               </button>
             ) : canViewGrades ? (
               <button
                 type="button"
                 onClick={onOpenGrades}
-                className="min-h-[68px] p-3 rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] hover:border-[var(--color-primary)] text-left flex flex-col justify-between transition active:scale-[0.98] cursor-pointer"
+                className="w-full min-h-[54px] px-3.5 py-2.5 rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] hover:border-[var(--color-primary)] text-left flex items-center justify-between gap-2 transition active:scale-[0.99] cursor-pointer"
               >
-                <div className="flex items-center justify-between gap-1">
-                  <span className="text-[11px] font-semibold text-[var(--color-text-muted)] truncate">
-                    GPAX
+                <span className="text-xs font-bold text-[var(--color-text-title)] truncate">
+                  GPAX
+                </span>
+                <span className="flex items-center gap-1.5 shrink-0">
+                  <span className="text-base font-bold text-[var(--color-text-title)] tabular-nums leading-none">
+                    {realGpax !== null ? realGpax.toFixed(2) : '—'}
                   </span>
                   <ChevronRight className="w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0" />
-                </div>
-                <p className="text-xl font-bold text-[var(--color-text-title)] tabular-nums leading-none mt-1">
-                  {realGpax !== null ? realGpax.toFixed(2) : '—'}
-                </p>
+                </span>
               </button>
             ) : null}
           </div>

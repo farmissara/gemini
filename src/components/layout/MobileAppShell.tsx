@@ -327,7 +327,10 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
   const ownStudent = resolveOwnStudent(currentUser, students);
   const currentPersonId = ownStudent?.id || currentUser?.id;
   const scopedAttendance = filterAttendanceForUser(attendance, currentUser, students);
-  const todayCheckin = scopedAttendance.find((a) => a.date === todayStr);
+  const todayCheckin =
+    scopedAttendance.find((a) => a.date === todayStr && a.recordType !== 'check_out') ||
+    scopedAttendance.find((a) => a.date === todayStr);
+  const todayCheckout = scopedAttendance.find((a) => a.date === todayStr && a.recordType === 'check_out');
 
   const isModuleEnabled = (tab: NavTab) => isTabEnabledByFeatureFlags(tab, featureFlags, currentRole);
 
@@ -751,6 +754,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                   playerProfile={currentScore}
                   lang={lang}
                   todayCheckin={todayCheckin}
+                  todayCheckout={todayCheckout}
                   scopedAttendance={scopedAttendance}
                   scopedCourses={scopedCourses}
                   grades={grades}
@@ -835,6 +839,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                   canOpenInfirmary={canOpenInfirmary}
                   isModuleEnabled={isModuleEnabled}
                   todayCheckin={todayCheckin}
+                  todayCheckout={todayCheckout}
                   todayBangkokStr={todayBangkokStr}
                   bangkokClock={bangkokClock}
                   todayMySlots={todayMySlots}
@@ -1189,10 +1194,25 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
             />
           )}
 
-          {/* TAB H: STUDENT / PARENT ATTENDANCE HISTORY */}
+          {/* TAB H: STUDENT / PARENT / STAFF ATTENDANCE HISTORY */}
           {activeTab === 'attendance_history' && (
             <MobileAttendanceHistoryTab
               lang={lang}
+              schoolId={activeSchool.id}
+              personName={
+                ownStudent
+                  ? `${ownStudent.firstNameTh} ${ownStudent.lastNameTh}`
+                  : matchedTeacher?.fullNameTh || currentUser?.fullNameTh || currentUser?.fullNameEn
+              }
+              personalTargetIds={
+                [
+                  ownStudent?.id,
+                  matchedTeacher?.id,
+                  currentUser?.id,
+                  currentUser?.studentRecordId,
+                ].filter(Boolean) as string[]
+              }
+              leaveRequests={leaveRequests}
               scopedAttendance={scopedAttendance}
               scopedPeriodAttendance={scopedPeriodAttendance}
               courses={scopedCourses}

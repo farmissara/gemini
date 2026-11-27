@@ -32,7 +32,6 @@ import {
   FileText,
   Check,
   X,
-  MapPin,
   Eye,
   Calendar,
   FileEdit,
@@ -50,7 +49,6 @@ import {
   resolveOwnStudent,
   resolveCurrentUserAttendanceProfile,
 } from '../lib/attendanceScope';
-import { SchoolGpsSettingsCard } from '../components/SchoolGpsSettingsCard';
 import { PagedList } from '../components/PagedList';
 import { ContinuousRapidScannerModal } from '../components/modals/ContinuousRapidScannerModal';
 import { AttendanceImportModal } from '../components/modals/AttendanceImportModal';
@@ -68,8 +66,14 @@ import {
   AttendanceCorrectionHub,
   type CorrectionPrefillSeed,
 } from '../components/attendance/AttendanceCorrectionHub';
+import { PersonalTimeCardPanel } from '../components/attendance/PersonalTimeCardPanel';
 import { AttendanceAudienceSwitch, type AttendanceAudience } from '../components/attendance/AttendanceAudienceSwitch';
-import { loadAttendanceCorrections } from '../lib/attendanceCorrections';
+import {
+  ATTENDANCE_CORRECTIONS_UPDATED_EVENT,
+  loadAttendanceCorrections,
+  parseTimeToMinutes,
+} from '../lib/attendanceCorrections';
+import { buildPersonalDailyAttendanceRows } from '../lib/personalAttendanceHistory';
 import { sendEduVerseNotification } from '../lib/pushNotifications';
 import { TableActionMenu } from '../components/common/TableActionMenu';
 import { StatusBadge } from '../components/common/StatusBadge';
@@ -119,15 +123,15 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
   onRecordAttendance,
   onBulkImportAttendance,
   onUpdateLeaveStatus,
-  onUpdateCampusGates,
-  onSaveCampusGates,
-  onUpdateSchoolCoordinates,
+  onUpdateCampusGates: _onUpdateCampusGates,
+  onSaveCampusGates: _onSaveCampusGates,
+  onUpdateSchoolCoordinates: _onUpdateSchoolCoordinates,
   courses = [],
   schoolPeriods = [],
   timetableSlots = [],
   periodAttendance = [],
   onRecordPeriodAttendance,
-  onOpenGpsSettings,
+  onOpenGpsSettings: _onOpenGpsSettings,
   onAttendanceAudienceChange,
   onLoadAttendanceRange,
 }) => {
@@ -146,8 +150,19 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
   );
 
   const loggedInProfile = resolveCurrentUserAttendanceProfile(currentUser, teachers, students);
-  const [activeTab, setActiveTab] = useState<'gate_scanner' | 'leave_approval' | 'time_corrections' | 'export_reports' | 'period_qr' | 'school_gps'>('gate_scanner');
+  const [activeTab, setActiveTab] = useState<'gate_scanner' | 'leave_approval' | 'time_corrections' | 'export_reports' | 'period_qr'>('gate_scanner');
   const [correctionPrefill, setCorrectionPrefill] = useState<CorrectionPrefillSeed | null>(null);
+  const [correctionRevision, setCorrectionRevision] = useState(0);
+
+  useEffect(() => {
+    const bump = () => setCorrectionRevision((v) => v + 1);
+    window.addEventListener(ATTENDANCE_CORRECTIONS_UPDATED_EVENT, bump);
+    window.addEventListener('storage', bump);
+    return () => {
+      window.removeEventListener(ATTENDANCE_CORRECTIONS_UPDATED_EVENT, bump);
+      window.removeEventListener('storage', bump);
+    };
+  }, []);
   const [showRapidScannerModal, setShowRapidScannerModal] = useState<boolean>(false);
   const [showImportModal, setShowImportModal] = useState<boolean>(false);
   const [importSuccessNotice, setImportSuccessNotice] = useState<string | null>(null);
@@ -764,9 +779,64 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
 
   const pendingLeaveCount = scopedLeaveRequests.filter((r) => r.status === 'pending').length;
   const activeSchoolId = activeSchool?.id || currentUser?.schoolId || 'sch-1';
-  const pendingCorrectionCount = loadAttendanceCorrections(activeSchoolId).filter(
+  const correctionRequestsList = useMemo(
+    () => loadAttendanceCorrections(activeSchoolId),
+    [activeSchoolId, correctionRevision, activeTab]
+  );
+  const pendingCorrectionCount = correctionRequestsList.filter(
     (r) => r.stage === 'pending_homeroom' || r.stage === 'pending_admin'
   ).length;
+
+  const myPersonalTargetIds = useMemo(() => {
+    const ids = new Set<string>();
+    if (loggedInProfile.targetId) ids.add(loggedInProfile.targetId);
+    if (currentUser?.id) ids.add(currentUser.id);
+    if (currentUser?.studentRecordId) ids.add(currentUser.studentRecordId);
+    if (ownStudent?.id) ids.add(ownStudent.id);
+    return ids;
+  }, [loggedInProfile.targetId, currentUser?.id, currentUser?.studentRecordId, ownStudent?.id]);
+
+  const myTodayCheckIn = useMemo(
+    () =>
+      attendance
+        .filter(
+          (a) =>
+            a.date === todayDateStr &&
+            (a.recordType || 'check_in') !== 'check_out' &&
+            (myPersonalTargetIds.has(a.studentId) ||
+              (a.teacherId ? myPersonalTargetIds.has(a.teacherId) : false))
+        )
+        .sort((a, b) => (parseTimeToMinutes(b.time) ?? -1) - (parseTimeToMinutes(a.time) ?? -1))[0],
+    [attendance, todayDateStr, myPersonalTargetIds]
+  );
+
+  const myTodayCheckOut = useMemo(
+    () =>
+      attendance
+        .filter(
+          (a) =>
+            a.date === todayDateStr &&
+            a.recordType === 'check_out' &&
+            (myPersonalTargetIds.has(a.studentId) ||
+              (a.teacherId ? myPersonalTargetIds.has(a.teacherId) : false))
+        )
+        .sort((a, b) => (parseTimeToMinutes(b.time) ?? -1) - (parseTimeToMinutes(a.time) ?? -1))[0],
+    [attendance, todayDateStr, myPersonalTargetIds]
+  );
+
+  const myPersonalRows = useMemo(
+    () =>
+      buildPersonalDailyAttendanceRows({
+        targetIds: myPersonalTargetIds,
+        attendance,
+        leaveRequests,
+        correctionRequests: correctionRequestsList,
+        schoolId: activeSchoolId,
+        todayDateStr,
+        daysLookback: 30,
+      }),
+    [myPersonalTargetIds, attendance, leaveRequests, correctionRequestsList, activeSchoolId, todayDateStr]
+  );
 
   return (
     <div className={`${getModuleTone('attendance')} h-full flex flex-col min-h-0 overflow-y-auto overflow-x-hidden space-y-4`}>
@@ -853,18 +923,6 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
               >
                 <QrCode className="w-3.5 h-3.5 shrink-0" />
                 <span>{lang === 'th' ? 'QR รายคาบ' : 'Period QR'}</span>
-              </button>
-            )}
-            {isAdminUser && (
-              <button
-                type="button"
-                data-active={activeTab === 'school_gps'}
-                onClick={() => setActiveTab('school_gps')}
-                className="seg-tab-btn"
-                title="ตั้งค่าพิกัด GPS และรัศมีประตูโรงเรียน (เฉพาะผู้ดูแลระบบโรงเรียน)"
-              >
-                <MapPin className="w-3.5 h-3.5 shrink-0" />
-                <span>GPS</span>
               </button>
             )}
           </div>
@@ -1631,7 +1689,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
                             />
                             <TableActionMenu
                               ariaLabel={`จัดการรายการเช็คชื่อของ ${name}`}
-                              menuWidth={195}
+                              menuWidth={205}
                               items={[
                                 ...(log.photoUrl
                                   ? [
@@ -1645,7 +1703,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
                                   : []),
                                 {
                                   id: 'request_time_correction',
-                                  label: 'ขอแก้ไขเวลา',
+                                  label: 'ขอแก้ไข / ยืนยันเวลา',
                                   icon: <FileEdit className="w-3.5 h-3.5" />,
                                   variant: 'primary',
                                   onClick: () => {
@@ -1659,6 +1717,12 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
                                     setActiveTab('time_corrections');
                                   },
                                 },
+                                {
+                                  id: 'go_to_leave',
+                                  label: 'ดู / ยื่นคำขอใบลา',
+                                  icon: <FileText className="w-3.5 h-3.5" />,
+                                  onClick: () => setActiveTab('leave_approval'),
+                                },
                               ]}
                             />
                           </div>
@@ -1668,25 +1732,51 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
                   )}
                 </div>
               )}
+
+              {(logScopeFilter === 'mine' || isRestrictedViewer) && attendanceViewMode === 'daily' && (
+                <div className="pt-4 mt-4 border-t border-[var(--color-border)]">
+                  <PersonalTimeCardPanel
+                    lang={lang}
+                    personName={loggedInProfile.userName}
+                    todayCheckInRecord={myTodayCheckIn}
+                    todayCheckOutRecord={myTodayCheckOut}
+                    rows={myPersonalRows}
+                    historyMaxHeightClass="max-h-[300px]"
+                    onOpenCorrectionFromHistory={(row) => {
+                      const targetScope =
+                        row.checkInTime && !row.checkOutTime ? 'gate_checkout' : 'gate_checkin';
+                      const issueType = !row.checkInTime
+                        ? 'forgot_checkin'
+                        : !row.checkOutTime
+                          ? 'forgot_checkout'
+                          : row.statusKey === 'late'
+                            ? 'late_arrival'
+                            : 'time_mismatch';
+                      setCorrectionPrefill({
+                        targetScope,
+                        issueType,
+                        date: row.date,
+                        originalTime:
+                          targetScope === 'gate_checkout'
+                            ? row.checkOutTime || ''
+                            : row.checkInTime || '',
+                        requesterId: loggedInProfile.targetId,
+                      });
+                      setActiveTab('time_corrections');
+                    }}
+                    onOpenLeaveFromHistory={(row) => {
+                      emitAppToast({
+                        tone: 'info',
+                        message: `กรุณายื่นใบลาสำหรับวันที่ ${row.dateLabelTh} ที่เมนูเช็คชื่อ/ใบลา`,
+                      });
+                      setActiveTab('leave_approval');
+                    }}
+                  />
+                </div>
+              )}
             </div>
           </div>
         </div>
-
-          {/* Link Banner to Analytics Tab instead of stacking heavy charts on operational screen */}
-          <div className="saas-alert-bar">
-            <span className="type-meta">
-              {lang === 'th'
-                ? 'ต้องการดู Heatmap เวลาเข้าเรียน 30 วันและกราฟแนวโน้มรายเดือน?'
-                : 'Looking for 30-day check-in heatmap and monthly trend charts?'}
-            </span>
-            <button
-              type="button"
-              onClick={() => setActiveTab('export_reports')}
-              className="type-label text-[var(--color-primary-text)] hover:underline cursor-pointer"
-            >
-              {lang === 'th' ? 'เปิดแท็บสถิติและรายงาน →' : 'Open Analytics & Reports →'}
-            </button>
-          </div>
       </div>
       )}
 
@@ -1997,66 +2087,6 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
             periodAttendance={periodAttendance}
             lang={lang}
           />
-        </div>
-      )}
-
-      {/* ========================================================================= */}
-      {/* TAB 5: SCHOOL GPS & GEOFENCE SUMMARY + HUB LINK */}
-      {/* ========================================================================= */}
-      {isAdminUser && activeTab === 'school_gps' && (
-        <div className="space-y-3">
-          {onOpenGpsSettings ? (
-            <div className="saas-card p-5 space-y-4">
-              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--color-border)] pb-3">
-                <div className="space-y-0.5">
-                  <h3 className="text-sm font-bold text-[var(--color-text-title)] flex items-center gap-2">
-                    <MapPin className="w-4 h-4 text-[var(--color-primary-text)]" />
-                    <span>จุดเช็คชื่อพิกัด GPS ประจำโรงเรียน ({campusGates.length} จุด)</span>
-                  </h3>
-                  <p className="text-xs text-[var(--color-text-muted)]">
-                    การตั้งค่าพิกัดและรัศมี Geofence ถูกรวมไว้ที่ศูนย์ตั้งค่าระบบ (System Settings) เพื่อป้องกันข้อมูลซ้ำซ้อน
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={onOpenGpsSettings}
-                  className="btn-action-primary px-4 py-2 text-xs cursor-pointer"
-                >
-                  ตั้งค่าพิกัด GPS ในศูนย์ตั้งค่า →
-                </button>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 text-xs">
-                {campusGates.map((gate) => (
-                  <div
-                    key={gate.id}
-                    className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] space-y-1"
-                  >
-                    <div className="font-bold text-[var(--color-text-title)] flex items-center justify-between gap-2">
-                      <span className="truncate">{gate.nameTh}</span>
-                      {gate.isPrimary && (
-                        <span className="px-1.5 py-0.5 rounded bg-[var(--color-primary-light)] text-[var(--color-primary-text)] text-[10px]">
-                          หลัก
-                        </span>
-                      )}
-                    </div>
-                    <p className="font-mono text-[11px] text-[var(--color-text-muted)]">
-                      {gate.lat.toFixed(5)}, {gate.lng.toFixed(5)} · รัศมี {gate.radiusMeters} ม.
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ) : activeSchool ? (
-            <SchoolGpsSettingsCard
-              activeSchool={activeSchool}
-              campusGates={campusGates}
-              currentRole={currentRole}
-              lang={lang}
-              onUpdateCampusGates={onUpdateCampusGates || (() => {})}
-              onSaveCampusGates={onSaveCampusGates}
-              onUpdateSchoolCoordinates={onUpdateSchoolCoordinates}
-            />
-          ) : null}
         </div>
       )}
 

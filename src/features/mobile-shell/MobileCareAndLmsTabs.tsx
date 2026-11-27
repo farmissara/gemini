@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Activity,
   AlertCircle,
@@ -8,7 +8,6 @@ import {
   CheckCircle2,
   Clock,
   ExternalLink,
-  Eye,
   FileEdit,
   FileText,
   HeartHandshake,
@@ -30,6 +29,7 @@ import type {
   InfirmaryCategory,
   InfirmaryStatus,
   InfirmaryVisit,
+  LeaveRequest,
   Lesson,
   PeriodAttendanceRecord,
   School,
@@ -37,11 +37,20 @@ import type {
   Student,
   UserRole,
 } from '../../types';
-import type { CorrectionIssueType, CorrectionTargetScope } from '../../lib/attendanceCorrections';
-import { formatThaiShortDateLabel, resolveRecordPhotoSource } from '../../lib/personalAttendanceHistory';
+import {
+  ATTENDANCE_CORRECTIONS_UPDATED_EVENT,
+  loadAttendanceCorrections,
+  parseTimeToMinutes,
+  type CorrectionIssueType,
+  type CorrectionTargetScope,
+} from '../../lib/attendanceCorrections';
+import {
+  buildPersonalDailyAttendanceRows,
+  formatThaiShortDateLabel,
+} from '../../lib/personalAttendanceHistory';
 import { getLocalDateString } from '../../lib/date';
 import { useSchoolCustomPresets } from '../../lib/schoolCustomPresets';
-import { AttendancePhoto } from '../../components/AttendancePhoto';
+import { PersonalTimeCardPanel } from '../../components/attendance/PersonalTimeCardPanel';
 import { PagedList } from '../../components/PagedList';
 import { StatusBadge } from '../../components/common/StatusBadge';
 
@@ -60,6 +69,10 @@ export interface HistoryCorrectionPrefill {
 
 interface MobileAttendanceHistoryTabProps {
   lang: AppLanguage;
+  schoolId?: string;
+  personName?: string;
+  personalTargetIds?: string[];
+  leaveRequests?: LeaveRequest[];
   scopedAttendance: AttendanceRecord[];
   scopedPeriodAttendance: PeriodAttendanceRecord[];
   courses: Course[];
@@ -70,6 +83,10 @@ interface MobileAttendanceHistoryTabProps {
 
 export const MobileAttendanceHistoryTab: React.FC<MobileAttendanceHistoryTabProps> = ({
   lang,
+  schoolId = 'sch-1',
+  personName,
+  personalTargetIds,
+  leaveRequests = [],
   scopedAttendance,
   scopedPeriodAttendance,
   courses,
@@ -80,11 +97,62 @@ export const MobileAttendanceHistoryTab: React.FC<MobileAttendanceHistoryTabProp
   const [mode, setMode] = useState<'daily' | 'period'>('daily');
   const [statusFilter, setStatusFilter] = useState<'all' | 'present' | 'late' | 'absent' | 'leave'>('all');
   const [actionMenuTarget, setActionMenuTarget] = useState<
-    | { kind: 'daily'; record: AttendanceRecord }
     | { kind: 'period'; record: PeriodAttendanceRecord; courseName: string }
     | null
   >(null);
-  const [photoPreviewRecord, setPhotoPreviewRecord] = useState<AttendanceRecord | null>(null);
+  const [correctionRevision, setCorrectionRevision] = useState(0);
+
+  useEffect(() => {
+    const bump = () => setCorrectionRevision((v) => v + 1);
+    window.addEventListener(ATTENDANCE_CORRECTIONS_UPDATED_EVENT, bump);
+    window.addEventListener('storage', bump);
+    return () => {
+      window.removeEventListener(ATTENDANCE_CORRECTIONS_UPDATED_EVENT, bump);
+      window.removeEventListener('storage', bump);
+    };
+  }, []);
+
+  const todayDateStr = getLocalDateString();
+  const targetIdSet = useMemo(() => {
+    const set = new Set<string>(personalTargetIds?.filter(Boolean) || []);
+    if (set.size === 0) {
+      scopedAttendance.forEach((a) => {
+        if (a.studentId) set.add(a.studentId);
+        if (a.teacherId) set.add(a.teacherId);
+      });
+    }
+    return set;
+  }, [personalTargetIds, scopedAttendance]);
+
+  const todayCheckInRecord = useMemo(
+    () =>
+      scopedAttendance
+        .filter((a) => a.date === todayDateStr && (a.recordType || 'check_in') !== 'check_out')
+        .sort((a, b) => (parseTimeToMinutes(b.time) ?? -1) - (parseTimeToMinutes(a.time) ?? -1))[0],
+    [scopedAttendance, todayDateStr]
+  );
+
+  const todayCheckOutRecord = useMemo(
+    () =>
+      scopedAttendance
+        .filter((a) => a.date === todayDateStr && a.recordType === 'check_out')
+        .sort((a, b) => (parseTimeToMinutes(b.time) ?? -1) - (parseTimeToMinutes(a.time) ?? -1))[0],
+    [scopedAttendance, todayDateStr]
+  );
+
+  const personalRows = useMemo(
+    () =>
+      buildPersonalDailyAttendanceRows({
+        targetIds: targetIdSet,
+        attendance: scopedAttendance,
+        leaveRequests,
+        correctionRequests: loadAttendanceCorrections(schoolId),
+        schoolId,
+        todayDateStr,
+        daysLookback: 30,
+      }),
+    [targetIdSet, scopedAttendance, leaveRequests, schoolId, todayDateStr, correctionRevision]
+  );
 
   const presentCount = scopedAttendance.filter((r) => r.status === 'present').length;
   const lateCount = scopedAttendance.filter((r) => r.status === 'late').length;
@@ -93,13 +161,6 @@ export const MobileAttendanceHistoryTab: React.FC<MobileAttendanceHistoryTabProp
     scopedAttendance.length > 0
       ? Math.round(((presentCount + lateCount) / scopedAttendance.length) * 100)
       : null;
-
-  const filteredDaily = useMemo(() => {
-    return scopedAttendance
-      .filter((r) => (statusFilter === 'all' ? true : r.status === statusFilter))
-      .slice()
-      .sort((a, b) => (b.date + (b.time || '')).localeCompare(a.date + (a.time || '')));
-  }, [scopedAttendance, statusFilter]);
 
   const filteredPeriod = useMemo(() => {
     return scopedPeriodAttendance
@@ -111,15 +172,6 @@ export const MobileAttendanceHistoryTab: React.FC<MobileAttendanceHistoryTabProp
       .slice()
       .sort((a, b) => b.date.localeCompare(a.date) || b.periodNumber - a.periodNumber);
   }, [scopedPeriodAttendance, statusFilter]);
-
-  const methodLabel = (method?: string) => {
-    if (method === 'selfie_mobile') return 'เซลฟี่+GPS';
-    if (method === 'nfc_tap') return 'แตะบัตร NFC';
-    if (method === 'qr_code' || method === 'qr') return 'สแกน QR';
-    if (method === 'teacher_proxy') return 'ครูลงชื่อให้';
-    if (method === 'student_mobile') return 'มือถือ';
-    return method || 'บันทึกเวลา';
-  };
 
   return (
     <div className="space-y-4 pb-6 animate-in fade-in duration-150">
@@ -176,7 +228,7 @@ export const MobileAttendanceHistoryTab: React.FC<MobileAttendanceHistoryTabProp
               : 'text-[var(--color-text-muted)]'
           }`}
         >
-          เข้า/ออกโรงเรียน ({scopedAttendance.length})
+          เข้า/ออกโรงเรียน ({personalRows.length})
         </button>
         <button
           type="button"
@@ -191,110 +243,68 @@ export const MobileAttendanceHistoryTab: React.FC<MobileAttendanceHistoryTabProp
         </button>
       </div>
 
-      {/* Status Filter */}
-      <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
-        {(
-          [
-            { id: 'all', label: 'ทั้งหมด' },
-            { id: 'present', label: 'ตรงเวลา' },
-            { id: 'late', label: 'มาสาย' },
-            { id: 'leave', label: 'ลา' },
-            { id: 'absent', label: 'ขาด' },
-          ] as const
-        ).map((f) => (
-          <button
-            key={f.id}
-            type="button"
-            onClick={() => setStatusFilter(f.id)}
-            className={`min-h-[38px] px-3 rounded-xl text-xs font-semibold shrink-0 cursor-pointer ${
-              statusFilter === f.id
-                ? 'bg-[var(--color-primary)] text-white'
-                : 'bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-body)]'
-            }`}
-          >
-            {f.label}
-          </button>
-        ))}
-      </div>
+      {mode === 'period' && (
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+          {(
+            [
+              { id: 'all', label: 'ทั้งหมด' },
+              { id: 'present', label: 'ตรงเวลา' },
+              { id: 'late', label: 'มาสาย' },
+              { id: 'leave', label: 'ลา' },
+              { id: 'absent', label: 'ขาด' },
+            ] as const
+          ).map((f) => (
+            <button
+              key={f.id}
+              type="button"
+              onClick={() => setStatusFilter(f.id)}
+              className={`min-h-[38px] px-3 rounded-xl text-xs font-semibold shrink-0 cursor-pointer ${
+                statusFilter === f.id
+                  ? 'bg-[var(--color-primary)] text-white'
+                  : 'bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-body)]'
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+      )}
 
       {mode === 'daily' ? (
-        <PagedList
-          items={filteredDaily}
-          pageSize={6}
-          previousLabel="ก่อนหน้า"
-          nextLabel="ถัดไป"
-          emptyState={
-            <div className="p-8 text-center rounded-2xl border border-dashed border-[var(--color-border)] text-xs text-[var(--color-text-muted)]">
-              ไม่มีประวัติการลงเวลารายวันในตัวกรองนี้
-            </div>
+        <PersonalTimeCardPanel
+          lang={lang}
+          personName={personName}
+          todayCheckInRecord={todayCheckInRecord}
+          todayCheckOutRecord={todayCheckOutRecord}
+          rows={personalRows}
+          historyMaxHeightClass="max-h-[420px]"
+          onOpenCorrectionFromHistory={
+            onOpenCorrectionFromHistory
+              ? (row) => {
+                  const targetScope =
+                    row.checkInTime && !row.checkOutTime ? 'gate_checkout' : 'gate_checkin';
+                  const issueType: CorrectionIssueType = !row.checkInTime
+                    ? 'forgot_checkin'
+                    : !row.checkOutTime
+                      ? 'forgot_checkout'
+                      : row.statusKey === 'late'
+                        ? 'late_arrival'
+                        : 'time_mismatch';
+                  onOpenCorrectionFromHistory({
+                    targetScope,
+                    issueType,
+                    date: row.date,
+                    originalTime:
+                      targetScope === 'gate_checkout'
+                        ? row.checkOutTime || ''
+                        : row.checkInTime || '',
+                  });
+                }
+              : undefined
           }
-          renderItem={(rec) => {
-            const photoSrc = resolveRecordPhotoSource(rec);
-            return (
-              <div
-                key={rec.id}
-                className="p-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] flex items-center justify-between gap-2.5 text-xs"
-              >
-                <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                  {photoSrc && (
-                    <button
-                      type="button"
-                      onClick={() => setPhotoPreviewRecord(rec)}
-                      className="w-11 h-11 rounded-xl overflow-hidden border border-[var(--color-border)] shrink-0 cursor-pointer relative group"
-                      aria-label={lang === 'th' ? 'ดูรูปถ่ายลงเวลา' : 'View attendance photo'}
-                    >
-                      <AttendancePhoto
-                        src={photoSrc}
-                        alt={rec.userName || rec.date}
-                        className="w-full h-full object-cover"
-                      />
-                    </button>
-                  )}
-                  <div className="min-w-0 space-y-0.5">
-                    <p className="font-bold text-[var(--color-text-title)] tabular-nums">
-                      {formatThaiShortDateLabel(rec.date)} · {rec.time || '--:--'} น.
-                    </p>
-                    <p className="text-[11px] text-[var(--color-text-muted)] truncate">
-                      {rec.recordType === 'check_out' ? 'ออกโรงเรียน' : 'เข้าโรงเรียน'} ·{' '}
-                      {methodLabel(rec.checkinMethod)}
-                      {rec.remarks ? ` · ${rec.remarks}` : ''}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-1 shrink-0">
-                  <StatusBadge
-                    size="xs"
-                    status={
-                      rec.status === 'present'
-                        ? 'complete'
-                        : rec.status === 'late'
-                          ? 'pending'
-                          : rec.status === 'leave'
-                            ? 'info'
-                            : 'delayed'
-                    }
-                    label={
-                      rec.status === 'present'
-                        ? 'ตรงเวลา'
-                        : rec.status === 'late'
-                          ? 'สาย'
-                          : rec.status === 'leave'
-                            ? 'ลา'
-                            : 'ขาด'
-                    }
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setActionMenuTarget({ kind: 'daily', record: rec })}
-                    className="min-h-[44px] min-w-[44px] -mr-1.5 rounded-xl inline-flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] hover:bg-[var(--color-card-subtle)] cursor-pointer transition"
-                    aria-label={lang === 'th' ? 'เมนูจัดการรายการลงเวลา' : 'Attendance row actions'}
-                  >
-                    <MoreVertical className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            );
-          }}
+          onOpenLeaveFromHistory={
+            onOpenLeaveFromHistory ? (row) => onOpenLeaveFromHistory(row.date) : undefined
+          }
         />
       ) : (
         <PagedList
@@ -362,7 +372,7 @@ export const MobileAttendanceHistoryTab: React.FC<MobileAttendanceHistoryTabProp
         />
       )}
 
-      {/* Row Action Sheet (⋮) */}
+      {/* Period Row Action Sheet (⋮) */}
       {actionMenuTarget && (
         <div
           className="fixed inset-0 z-50 bg-black/55 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-150"
@@ -377,16 +387,10 @@ export const MobileAttendanceHistoryTab: React.FC<MobileAttendanceHistoryTabProp
             <div className="flex items-center justify-between gap-2 pb-2 border-b border-[var(--color-border)]">
               <div className="min-w-0">
                 <p className="text-sm font-extrabold text-[var(--color-text-title)] truncate">
-                  {actionMenuTarget.kind === 'daily'
-                    ? `${formatThaiShortDateLabel(actionMenuTarget.record.date)} · ${actionMenuTarget.record.time || '--:--'} น.`
-                    : `${actionMenuTarget.courseName} · คาบ ${actionMenuTarget.record.periodNumber}`}
+                  {actionMenuTarget.courseName} · คาบ {actionMenuTarget.record.periodNumber}
                 </p>
                 <p className="text-[11px] text-[var(--color-text-muted)] truncate">
-                  {actionMenuTarget.kind === 'daily'
-                    ? actionMenuTarget.record.recordType === 'check_out'
-                      ? 'เช็คชื่อออกโรงเรียน'
-                      : 'เช็คชื่อเข้าโรงเรียน'
-                    : `${formatThaiShortDateLabel(actionMenuTarget.record.date)} (${actionMenuTarget.record.timeSlot})`}
+                  {formatThaiShortDateLabel(actionMenuTarget.record.date)} ({actionMenuTarget.record.timeSlot})
                 </p>
               </div>
               <button
@@ -403,43 +407,24 @@ export const MobileAttendanceHistoryTab: React.FC<MobileAttendanceHistoryTabProp
               <button
                 type="button"
                 onClick={() => {
-                  const target = actionMenuTarget;
+                  const rec = actionMenuTarget.record;
                   setActionMenuTarget(null);
-                  if (target.kind === 'daily') {
-                    const rec = target.record;
-                    const targetScope =
-                      rec.recordType === 'check_out' ? 'gate_checkout' : 'gate_checkin';
-                    const issueType =
-                      rec.status === 'late'
-                        ? 'late_arrival'
-                        : rec.status === 'absent'
-                          ? 'absent_marked'
-                          : 'time_mismatch';
-                    onOpenCorrectionFromHistory({
-                      targetScope,
-                      issueType,
-                      date: rec.date,
-                      originalTime: rec.time,
-                    });
-                  } else {
-                    const rec = target.record;
-                    const targetScope =
-                      rec.recordType === 'check_out' ? 'period_checkout' : 'period_checkin';
-                    const issueType =
-                      rec.status === 'late'
-                        ? 'late_arrival'
-                        : rec.status === 'absent'
-                          ? 'absent_marked'
-                          : 'time_mismatch';
-                    onOpenCorrectionFromHistory({
-                      targetScope,
-                      issueType,
-                      date: rec.date,
-                      originalTime: rec.actualCheckInTime,
-                      courseId: rec.courseId,
-                      periodNumber: rec.periodNumber,
-                    });
-                  }
+                  const targetScope =
+                    rec.recordType === 'check_out' ? 'period_checkout' : 'period_checkin';
+                  const issueType: CorrectionIssueType =
+                    rec.status === 'late'
+                      ? 'late_arrival'
+                      : rec.status === 'absent'
+                        ? (targetScope === 'period_checkout' ? 'forgot_checkout' : 'forgot_checkin')
+                        : 'time_mismatch';
+                  onOpenCorrectionFromHistory({
+                    targetScope,
+                    issueType,
+                    date: rec.date,
+                    originalTime: rec.actualCheckInTime,
+                    courseId: rec.courseId,
+                    periodNumber: rec.periodNumber,
+                  });
                 }}
                 className="w-full min-h-[48px] px-3.5 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] flex items-center gap-3 text-left cursor-pointer transition"
               >
@@ -480,79 +465,6 @@ export const MobileAttendanceHistoryTab: React.FC<MobileAttendanceHistoryTabProp
                 </div>
               </button>
             )}
-
-            {actionMenuTarget.kind === 'daily' &&
-              Boolean(resolveRecordPhotoSource(actionMenuTarget.record)) && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    const rec = actionMenuTarget.record;
-                    setActionMenuTarget(null);
-                    setPhotoPreviewRecord(rec);
-                  }}
-                  className="w-full min-h-[48px] px-3.5 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] flex items-center gap-3 text-left cursor-pointer transition"
-                >
-                  <Eye className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                  <div>
-                    <p className="text-xs font-bold text-[var(--color-text-title)]">
-                      {lang === 'th' ? 'ดูรูปถ่ายลงเวลา' : 'View attendance photo'}
-                    </p>
-                    <p className="text-[11px] text-[var(--color-text-muted)]">
-                      {lang === 'th' ? 'ตรวจสอบภาพเซลฟี่และเวลาที่บันทึก' : 'Inspect photo and timestamp'}
-                    </p>
-                  </div>
-                </button>
-              )}
-          </div>
-        </div>
-      )}
-
-      {/* Photo Preview Modal */}
-      {photoPreviewRecord && (
-        <div
-          className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150"
-          onClick={() => setPhotoPreviewRecord(null)}
-        >
-          <div
-            role="dialog"
-            aria-modal="true"
-            className="w-full max-w-sm rounded-3xl bg-[var(--color-card)] border border-[var(--color-border)] overflow-hidden shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="px-4 py-3 border-b border-[var(--color-border)] flex items-center justify-between gap-2">
-              <div className="min-w-0">
-                <p className="text-sm font-extrabold text-[var(--color-text-title)] truncate">
-                  {formatThaiShortDateLabel(photoPreviewRecord.date)} · {photoPreviewRecord.time || '--:--'} น.
-                </p>
-                <p className="text-[11px] text-[var(--color-text-muted)] truncate">
-                  {photoPreviewRecord.recordType === 'check_out'
-                    ? 'เช็คชื่อออกโรงเรียน'
-                    : 'เช็คชื่อเข้าโรงเรียน'}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setPhotoPreviewRecord(null)}
-                className="min-h-[40px] min-w-[40px] rounded-xl flex items-center justify-center text-[var(--color-text-muted)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
-                aria-label={lang === 'th' ? 'ปิดรูปถ่าย' : 'Close photo'}
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <div className="p-4 space-y-2.5">
-              <div className="aspect-[3/4] max-h-[60vh] mx-auto rounded-2xl overflow-hidden border border-[var(--color-border)] bg-[var(--color-card-subtle)]">
-                <AttendancePhoto
-                  src={resolveRecordPhotoSource(photoPreviewRecord)}
-                  alt={photoPreviewRecord.userName || photoPreviewRecord.date}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-              {photoPreviewRecord.remarks && (
-                <p className="text-[11px] text-[var(--color-text-muted)] text-center">
-                  {photoPreviewRecord.remarks}
-                </p>
-              )}
-            </div>
           </div>
         </div>
       )}

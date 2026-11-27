@@ -437,16 +437,6 @@ export const AdminDashboardWorkspace: React.FC<AdminDashboardWorkspaceProps> = (
             <Download className="w-3.5 h-3.5 shrink-0" />
             <span>{lang === 'th' ? 'ส่งออก CSV' : 'Export CSV'}</span>
           </button>
-          {isModuleEnabled('attendance') && (
-            <button
-              type="button"
-              onClick={() => onNavigate('attendance')}
-              className="btn-action-primary"
-            >
-              <QrCode className="w-3.5 h-3.5" />
-              <span>{lang === 'th' ? 'เช็คชื่อ' : 'Attendance'}</span>
-            </button>
-          )}
         </div>
       </div>
 

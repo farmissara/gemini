@@ -3,6 +3,7 @@ import {
   BarChart3,
   BookOpen,
   Calendar,
+  Camera,
   ChevronRight,
   Clock,
   Compass,
@@ -11,9 +12,7 @@ import {
   HeartHandshake,
   HeartPulse,
   LayoutGrid,
-  LogIn,
   User,
-  Users,
 } from 'lucide-react';
 import type {
   AppLanguage,
@@ -30,6 +29,11 @@ import type { ThaiHoliday } from '../../lib/thaiHolidays';
 import { isWeekendDate } from '../../lib/thaiHolidays';
 import { getTimetableSlotActivityStatus, type BangkokClockSnapshot } from '../../lib/timetableCalendar';
 import { PeriodTimeMissionsCard } from '../../components/PeriodTimeMissionsCard';
+import { AttendancePhoto } from '../../components/AttendancePhoto';
+import {
+  formatShortAttendanceTime,
+  resolveRecordPhotoSource,
+} from '../../lib/personalAttendanceHistory';
 import type { NavTab } from '../../components/layout/Sidebar';
 import type { ActiveGameView, ExecMetrics, MobileTab } from './types';
 
@@ -56,6 +60,7 @@ interface MobileTeacherParentHomeProps {
   canOpenInfirmary?: boolean;
   isModuleEnabled: (tab: NavTab) => boolean;
   todayCheckin: AttendanceRecord | undefined;
+  todayCheckout?: AttendanceRecord | undefined;
   todayBangkokStr: string;
   bangkokClock: BangkokClockSnapshot;
   todayMySlots: TimetableSlot[];
@@ -127,6 +132,7 @@ export const MobileTeacherParentHome: React.FC<MobileTeacherParentHomeProps> = (
   canOpenBehaviorSdq = false,
   canOpenInfirmary = false,
   todayCheckin,
+  todayCheckout,
   todayBangkokStr,
   bangkokClock,
   todayMySlots,
@@ -297,63 +303,67 @@ export const MobileTeacherParentHome: React.FC<MobileTeacherParentHomeProps> = (
             />
           )}
 
-          {isTeacher && canSelfCheckin && (
-            <div className="grid grid-cols-2 gap-2">
+          {isTeacher && canSelfCheckin && (() => {
+            const checkInTimeText = formatShortAttendanceTime(todayCheckin?.time);
+            const checkOutTimeText = formatShortAttendanceTime(todayCheckout?.time || todayCheckin?.checkOutTime);
+            const checkInPhoto = todayCheckin ? resolveRecordPhotoSource(todayCheckin) : undefined;
+            const checkOutPhoto = todayCheckout ? resolveRecordPhotoSource(todayCheckout) : undefined;
+            return (
               <button
                 type="button"
                 onClick={() => {
                   setMobileAttendanceInitialSubTab('selfie_mobile');
                   setActiveTab('checkin');
                 }}
-                className="min-h-[68px] p-3 rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] hover:border-emerald-500 text-left flex flex-col justify-between cursor-pointer transition"
+                className="w-full min-h-[64px] p-3 rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] hover:border-[var(--color-primary)] text-left flex items-center justify-between gap-3 cursor-pointer transition"
               >
-                <div className="flex items-center justify-between gap-1 text-emerald-700 dark:text-emerald-400">
-                  <LogIn className="w-4 h-4 shrink-0" />
-                  <ChevronRight className="w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0" />
+                <div className="flex items-center gap-2.5 min-w-0">
+                  {checkInPhoto ? (
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <div className="w-11 h-11 rounded-xl overflow-hidden border border-[var(--color-border)] bg-[var(--color-card-subtle)] shrink-0">
+                        <AttendancePhoto
+                          src={checkInPhoto}
+                          alt={displayName}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      {checkOutPhoto && (
+                        <div className="w-11 h-11 rounded-xl overflow-hidden border border-[var(--color-border)] bg-[var(--color-card-subtle)] shrink-0">
+                          <AttendancePhoto
+                            src={checkOutPhoto}
+                            alt={displayName}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="w-11 h-11 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-emerald-700 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                      <Camera className="w-4 h-4" />
+                    </div>
+                  )}
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold text-[var(--color-text-title)] truncate">
+                      {lang === 'th' ? 'ลงเวลาเข้า-ออกวันนี้ของฉัน' : 'My School Check-in Today'}
+                    </p>
+                    <p className="text-[11px] text-[var(--color-text-muted)] tabular-nums truncate mt-0.5">
+                      {checkInTimeText
+                        ? lang === 'th'
+                          ? `เข้า ${checkInTimeText} น.${checkOutTimeText ? ` · ออก ${checkOutTimeText} น.` : ' · ยังไม่ลงเวลาออก'}`
+                          : `In ${checkInTimeText}${checkOutTimeText ? ` · Out ${checkOutTimeText}` : ''}`
+                        : lang === 'th'
+                          ? 'แตะเพื่อถ่ายรูปลงเวลา / ดูประวัติย้อนหลัง'
+                          : 'Tap to clock in or check history'}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-xs font-bold text-[var(--color-text-title)] truncate">
-                    {lang === 'th' ? 'เช็คชื่อเข้า/ออกโรงเรียน' : 'School Check-in/Out'}
-                  </p>
-                  <p className="text-[11px] text-[var(--color-text-muted)] tabular-nums truncate">
-                    {todayCheckin
-                      ? lang === 'th'
-                        ? `เข้า ${todayCheckin.time.slice(0, 5)} น.`
-                        : `In ${todayCheckin.time.slice(0, 5)}`
-                      : lang === 'th'
-                        ? 'ลงเวลาวันนี้'
-                        : 'Clock in'}
-                  </p>
-                </div>
+                <span className="inline-flex items-center gap-1 text-xs font-semibold text-[var(--color-primary-text)] whitespace-nowrap shrink-0">
+                  <span>{lang === 'th' ? 'ลงเวลา / ประวัติ' : 'Clock / History'}</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </span>
               </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setMobileAttendanceInitialSubTab('period_checkin');
-                  setActiveTab('checkin');
-                }}
-                className="min-h-[68px] p-3 rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] hover:border-[var(--color-primary)] text-left flex flex-col justify-between cursor-pointer transition"
-              >
-                <div className="flex items-center justify-between gap-1 text-[var(--color-primary-text)]">
-                  <Users className="w-4 h-4 shrink-0" />
-                  <ChevronRight className="w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0" />
-                </div>
-                <div>
-                  <p className="text-xs font-bold text-[var(--color-text-title)] truncate">
-                    {lang === 'th' ? 'เช็คชื่อเข้า/ออกคาบเรียน' : 'Period Check-in/Out'}
-                  </p>
-                  <p className="text-[11px] text-[var(--color-text-muted)] tabular-nums truncate">
-                    {todayHoliday || isWeekend
-                      ? lang === 'th'
-                        ? 'วันหยุด'
-                        : 'Day off'
-                      : `${todayMySlots.length} ${lang === 'th' ? 'คาบวันนี้' : 'periods'}`}
-                  </p>
-                </div>
-              </button>
-            </div>
-          )}
+            );
+          })()}
 
           {isParent && (
             <div className="space-y-2.5">
@@ -362,25 +372,40 @@ export const MobileTeacherParentHome: React.FC<MobileTeacherParentHomeProps> = (
                 onClick={() => setActiveTab('attendance_history')}
                 className="w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--color-primary)] p-3.5 text-left flex items-center justify-between gap-3 cursor-pointer transition"
               >
-                <div className="min-w-0 space-y-0.5">
-                  <p className="text-xs font-medium text-[var(--color-text-muted)]">
-                    {lang === 'th' ? 'เวลาเข้า-ออกโรงเรียนวันนี้' : "Child's Attendance Today"}
-                  </p>
-                  <p className="text-base font-bold text-[var(--color-text-title)] tabular-nums">
-                    {todayCheckin
-                      ? lang === 'th'
-                        ? `เช็คชื่อแล้ว · ${todayCheckin.time} น.`
-                        : `Checked in · ${todayCheckin.time}`
-                      : lang === 'th'
-                        ? 'ยังไม่มีบันทึกวันนี้'
-                        : 'No record today'}
-                  </p>
-                  {linkedStudents.length > 0 && (
-                    <p className="text-xs text-[var(--color-text-muted)] truncate">
-                      {linkedStudents[0].firstNameTh} {linkedStudents[0].lastNameTh} ·{' '}
-                      {linkedStudents[0].gradeLevel} {linkedStudents[0].room}
-                    </p>
+                <div className="flex items-center gap-3 min-w-0">
+                  {todayCheckin && resolveRecordPhotoSource(todayCheckin) && (
+                    <div className="w-12 h-12 rounded-xl overflow-hidden border border-[var(--color-border)] bg-[var(--color-card-subtle)] shrink-0">
+                      <AttendancePhoto
+                        src={resolveRecordPhotoSource(todayCheckin)}
+                        alt={linkedStudents[0]?.firstNameTh || 'student'}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
                   )}
+                  <div className="min-w-0 space-y-0.5">
+                    <p className="text-xs font-medium text-[var(--color-text-muted)]">
+                      {lang === 'th' ? 'เวลาเข้า-ออกโรงเรียนวันนี้' : "Child's Attendance Today"}
+                    </p>
+                    <p className="text-sm font-bold text-[var(--color-text-title)] tabular-nums">
+                      {todayCheckin
+                        ? (() => {
+                            const inTime = formatShortAttendanceTime(todayCheckin.time) || todayCheckin.time;
+                            const outTime = formatShortAttendanceTime(todayCheckout?.time || todayCheckin.checkOutTime);
+                            return lang === 'th'
+                              ? `เข้า ${inTime} น.${outTime ? ` · ออก ${outTime} น.` : ''}`
+                              : `In ${inTime}${outTime ? ` · Out ${outTime}` : ''}`;
+                          })()
+                        : lang === 'th'
+                          ? 'ยังไม่มีบันทึกวันนี้'
+                          : 'No record today'}
+                    </p>
+                    {linkedStudents.length > 0 && (
+                      <p className="text-xs text-[var(--color-text-muted)] truncate">
+                        {linkedStudents[0].firstNameTh} {linkedStudents[0].lastNameTh} ·{' '}
+                        {linkedStudents[0].gradeLevel} {linkedStudents[0].room}
+                      </p>
+                    )}
+                  </div>
                 </div>
                 <ChevronRight className="w-4 h-4 text-[var(--color-text-muted)] shrink-0" />
               </button>

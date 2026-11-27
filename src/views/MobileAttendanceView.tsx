@@ -117,6 +117,7 @@ import {
   type SelfieFrameId,
 } from '../lib/selfieStickerStudio';
 import {
+  ATTENDANCE_CORRECTIONS_UPDATED_EVENT,
   evaluatePeriodTimingStatus,
   loadAttendanceCorrections,
   loadPeriodFlexConfig,
@@ -130,7 +131,6 @@ import {
 import { AttendanceAudienceSwitch } from '../components/attendance/AttendanceAudienceSwitch';
 import {
   AttendanceModalsAndSheets,
-  AttendanceQuickActionBar,
   DailyAttendanceReportTab,
   LeaveRequestTab,
   NfcTapAttendanceTab,
@@ -206,7 +206,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
   const safeInitialSubTab: AttendanceSubTab =
     (!isStaffUser && initialSubTab === 'teacher_proxy') ||
     (!canViewDailyReport && initialSubTab === 'daily_report') ||
-    (hideStaffOverviewTabs && isStaffUser && (initialSubTab === 'daily_report' || initialSubTab === 'corrections'))
+    (hideStaffOverviewTabs && isStaffUser && initialSubTab === 'daily_report')
       ? 'selfie_mobile'
       : initialSubTab;
 
@@ -669,6 +669,17 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
   const [correctionPrefill, setCorrectionPrefill] = useState<CorrectionPrefillSeed | null>(
     initialCorrectionPrefill
   );
+  const [correctionRevision, setCorrectionRevision] = useState(0);
+
+  useEffect(() => {
+    const bumpRevision = () => setCorrectionRevision((v) => v + 1);
+    window.addEventListener(ATTENDANCE_CORRECTIONS_UPDATED_EVENT, bumpRevision);
+    window.addEventListener('storage', bumpRevision);
+    return () => {
+      window.removeEventListener(ATTENDANCE_CORRECTIONS_UPDATED_EVENT, bumpRevision);
+      window.removeEventListener('storage', bumpRevision);
+    };
+  }, []);
 
   useEffect(() => {
     if (initialCorrectionPrefill) {
@@ -1153,9 +1164,9 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
       correctionRequests: correctionList,
       schoolId: activeSchoolId,
       todayDateStr,
-      daysLookback: 21,
+      daysLookback: 30,
     });
-  }, [activeTargetMatchIds, attendance, leaveRequests, activeSchoolId, todayDateStr, subTab]);
+  }, [activeTargetMatchIds, attendance, leaveRequests, activeSchoolId, todayDateStr, correctionRevision, subTab]);
 
   useEffect(() => {
     if (activeTodayCheckIn && !activeTodayCheckOut && !activeTodayCheckIn.checkOutTime) {
@@ -3004,7 +3015,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
               },
             ]
               .filter((tab) => {
-                if (hideStaffOverviewTabs && isStaffUser && (tab.id === 'daily_report' || tab.id === 'corrections')) {
+                if (hideStaffOverviewTabs && isStaffUser && tab.id === 'daily_report') {
                   return false;
                 }
                 return tab.id === 'daily_report'
@@ -3043,29 +3054,6 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                 );
               })}
           </nav>
-
-            {!hideFloatingToolbar && (
-              <div className="pb-1.5 shrink-0">
-                <AttendanceQuickActionBar
-                  lang={lang}
-                  direction="down"
-                  isStaffUser={isStaffUser}
-                  subTab={subTab}
-                  setSubTab={setSubTab}
-                  setLeaveFormStep={setLeaveFormStep}
-                  fabMenuOpen={fabMenuOpen}
-                  setFabMenuOpen={setFabMenuOpen}
-                  runWithBiometricGuard={runWithBiometricGuard}
-                  setShowRapidScanner={setShowRapidScanner}
-                  setShowQuickRosterSheet={setShowQuickRosterSheet}
-                  handlePrimaryFabCheckin={handlePrimaryFabCheckin}
-                  isSavingAttendance={isSavingAttendance}
-                  capturedPhotoUrl={capturedPhotoUrl}
-                  matchedProxyStudent={matchedProxyStudent}
-                  primaryFabLabel={primaryFabLabel}
-                />
-              </div>
-            )}
           </div>
         </div>
       )}
@@ -3183,7 +3171,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                     ) {
                       return false;
                     }
-                    if (hideStaffOverviewTabs && isStaffUser && (tab.id === 'daily_report' || tab.id === 'corrections')) {
+                    if (hideStaffOverviewTabs && isStaffUser && tab.id === 'daily_report') {
                       return false;
                     }
                     return tab.id === 'daily_report'

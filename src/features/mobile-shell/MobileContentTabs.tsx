@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
   ArrowLeft,
-  Award,
   ChevronRight,
   Fingerprint,
   KeyRound,
@@ -95,8 +94,8 @@ export const MobileProfileTab: React.FC<MobileProfileTabProps> = ({
   profilePage,
   setProfilePage,
   canViewDigitalId,
-  canOpenPortfolio,
-  myOwnPortfolioCount,
+  canOpenPortfolio: _canOpenPortfolio,
+  myOwnPortfolioCount: _myOwnPortfolioCount,
   isRestrictedViewer,
   ownStudent,
   linkedStudents,
@@ -113,7 +112,7 @@ export const MobileProfileTab: React.FC<MobileProfileTabProps> = ({
   onBiometricLock,
   onSwitchToDesktopMode,
   onLogout,
-  onOpenPortfolio,
+  onOpenPortfolio: _onOpenPortfolio,
 }) => {
   const [passkey, setPasskey] = useState<EnrolledBiometricPasskey | null>(() =>
     getPasskeyForUser(currentUser?.id)
@@ -355,24 +354,6 @@ export const MobileProfileTab: React.FC<MobileProfileTabProps> = ({
                 </button>
               </div>
             </div>
-
-            {currentRole === 'student' && canOpenPortfolio && (
-              <button
-                type="button"
-                onClick={onOpenPortfolio}
-                className="w-full px-3 py-2.5 hover:bg-[var(--color-card-subtle)] text-[var(--color-text-title)] flex items-center justify-between text-left cursor-pointer transition"
-              >
-                <span className="flex items-center gap-2 font-semibold">
-                  <Award className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-                  <span>
-                    {lang === 'th'
-                      ? `แฟ้มผลงาน (${myOwnPortfolioCount})`
-                      : `Portfolio (${myOwnPortfolioCount})`}
-                  </span>
-                </span>
-                <ChevronRight className="w-4 h-4 text-[var(--color-text-muted)]" />
-              </button>
-            )}
 
             {onOpenOnboardingTutor && currentRole !== 'student' && (
               <button

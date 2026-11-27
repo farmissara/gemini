@@ -1,5 +1,7 @@
 import type {
+  AttendanceCorrectionIssueType,
   AttendanceCorrectionRequest,
+  AttendanceCorrectionScope,
   AttendanceRecord,
   Course,
   PeriodAttendanceRecord,
@@ -8,6 +10,9 @@ import type {
   UserRole,
 } from '../types';
 import { sendEduVerseNotification } from './pushNotifications';
+
+export type CorrectionTargetScope = AttendanceCorrectionScope;
+export type CorrectionIssueType = AttendanceCorrectionIssueType;
 
 export interface PeriodFlexConfig {
   graceMinutes: number; // default 15 mins grace for check-in; 999 = open flexible window
@@ -188,6 +193,8 @@ export function loadAttendanceCorrections(schoolId: string): AttendanceCorrectio
   }
 }
 
+export const ATTENDANCE_CORRECTIONS_UPDATED_EVENT = 'eduverse-corrections-updated';
+
 export function persistAttendanceCorrections(
   schoolId: string,
   list: AttendanceCorrectionRequest[]
@@ -197,6 +204,15 @@ export function persistAttendanceCorrections(
       localStorage.setItem(getCorrectionStorageKey(schoolId), JSON.stringify(list.slice(0, 200)));
     } catch {
       // Ignore quota issues
+    }
+  }
+  if (typeof window !== 'undefined') {
+    try {
+      window.dispatchEvent(
+        new CustomEvent(ATTENDANCE_CORRECTIONS_UPDATED_EVENT, { detail: { schoolId } })
+      );
+    } catch {
+      // Ignore environments without CustomEvent
     }
   }
   return list;

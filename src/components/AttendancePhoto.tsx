@@ -27,7 +27,7 @@ interface AttendancePhotoProps extends React.ImgHTMLAttributes<HTMLImageElement>
 }
 
 /** Loads private attendance photos only when the image is near the viewport. */
-export default function AttendancePhoto({ src, fallbackSrc, onError, ...props }: AttendancePhotoProps) {
+export function AttendancePhoto({ src, fallbackSrc, onError, ...props }: AttendancePhotoProps) {
   const imageRef = useRef<HTMLImageElement>(null);
   const directRemote = typeof src === 'string' && src.length > 0 && isRemoteUrl(src);
   const [shouldLoad, setShouldLoad] = useState(directRemote);
@@ -83,3 +83,5 @@ export default function AttendancePhoto({ src, fallbackSrc, onError, ...props }:
     onError?.(event);
   }} />;
 }
+
+export default AttendancePhoto;

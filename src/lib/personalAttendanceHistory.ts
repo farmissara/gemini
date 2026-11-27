@@ -41,14 +41,38 @@ export function formatShortAttendanceTime(timeStr?: string): string | undefined 
   return `${match[1].padStart(2, '0')}:${match[2]}`;
 }
 
+function parseTimeToSeconds(timeStr?: string): number | null {
+  if (!timeStr) return null;
+  const match = /(\d{1,2}):(\d{2})(?::(\d{2}))?/.exec(timeStr.trim());
+  if (!match) return null;
+  const h = Number(match[1]);
+  const m = Number(match[2]);
+  const s = match[3] !== undefined ? Number(match[3]) : 0;
+  if (
+    Number.isNaN(h) ||
+    Number.isNaN(m) ||
+    Number.isNaN(s) ||
+    h < 0 ||
+    h > 23 ||
+    m < 0 ||
+    m > 59 ||
+    s < 0 ||
+    s > 59
+  ) {
+    return null;
+  }
+  return h * 3600 + m * 60 + s;
+}
+
 export function formatDurationLabel(checkInTime?: string, checkOutTime?: string): string | undefined {
-  const startM = parseTimeToMinutes(checkInTime);
-  const endM = parseTimeToMinutes(checkOutTime);
-  if (startM === null || endM === null) return undefined;
-  const diff = endM - startM;
-  if (diff < 0) return undefined;
-  const hours = Math.floor(diff / 60);
-  const mins = diff % 60;
+  const startS = parseTimeToSeconds(checkInTime);
+  const endS = parseTimeToSeconds(checkOutTime);
+  if (startS === null || endS === null) return undefined;
+  const diffSeconds = endS - startS;
+  if (diffSeconds < 0) return undefined;
+  const diffMins = Math.floor(diffSeconds / 60);
+  const hours = Math.floor(diffMins / 60);
+  const mins = diffMins % 60;
   return `${hours}:${String(mins).padStart(2, '0')}`;
 }
 

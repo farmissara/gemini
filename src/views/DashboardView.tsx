@@ -76,7 +76,8 @@ import { emitAppToast } from '../components/common/ToastProvider';
 import { NavTab } from '../components/layout/Sidebar';
 import { getLocalDateString } from '../lib/date';
 import { getHolidayForDate, getUpcomingHolidays, isWeekendDate } from '../lib/thaiHolidays';
-import { filterAttendanceForUser, resolveLinkedStudentsForUser } from '../lib/attendanceScope';
+import { filterAttendanceForUser, resolveLinkedStudentsForUser, resolveOwnTeacher } from '../lib/attendanceScope';
+import { formatShortAttendanceTime, resolveRecordPhotoSource } from '../lib/personalAttendanceHistory';
 import {
   filterAnnouncementsForRole,
   filterAssignmentsForPersonalRole,
@@ -424,6 +425,30 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     [attendance, currentUser, students]
   );
 
+  const ownTeacherProfile = useMemo(
+    () => (currentRole === 'teacher' ? resolveOwnTeacher(currentUser, teachers) : undefined),
+    [currentRole, currentUser, teachers]
+  );
+  const myTeacherTodayAttendance = useMemo(() => {
+    if (currentRole !== 'teacher' || !currentUser) return { checkIn: undefined, checkOut: undefined };
+    const teacherIds = new Set(
+      [currentUser.id, currentUser.teacherRecordId, currentUser.teacherIdNumber, ownTeacherProfile?.id, ownTeacherProfile?.teacherIdNumber]
+        .filter((v): v is string => Boolean(v && v.trim()))
+        .map((v) => v.trim().toLowerCase())
+    );
+    const fullTh = (currentUser.fullNameTh || '').trim().toLowerCase();
+    const mine = attendance.filter((rec) => {
+      if (rec.date !== todayStr) return false;
+      if (rec.studentId && teacherIds.has(rec.studentId.trim().toLowerCase())) return true;
+      if (rec.userType === 'teacher' && fullTh && (rec.userName || '').trim().toLowerCase() === fullTh) return true;
+      return false;
+    });
+    return {
+      checkIn: mine.find((r) => r.recordType !== 'check_out') || mine[0],
+      checkOut: mine.find((r) => r.recordType === 'check_out'),
+    };
+  }, [attendance, currentRole, currentUser, ownTeacherProfile, todayStr]);
+
   // Filter attendance for the selected date
   const filteredAttendanceByDate = useMemo(() => {
     return scopedAttendance.filter(a => a.date === selectedDate);
@@ -748,115 +773,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const studentCanViewGrades = schoolPermissions?.student_view_grades !== false && isModuleEnabled('gradebook');
   const parentCanViewGrades = schoolPermissions?.student_view_grades !== false && isModuleEnabled('gradebook');
 
-  const morningQuickActions: Array<{
-    id: string;
-    label: string;
-    tab: NavTab;
-    icon?: React.ComponentType<{ className?: string }>;
-    primary?: boolean;
-  }> = [];
-  if (currentRole === 'admin' || currentRole === 'super_admin') {
-    if (isModuleEnabled('timetable')) {
-      morningQuickActions.push({
-        id: 'tt',
-        label: lang === 'th' ? 'ตารางสอนวันนี้' : 'Timetable',
-        tab: 'timetable',
-        icon: Calendar,
-        primary: true,
-      });
-    }
-    if (isModuleEnabled('attendance')) {
-      morningQuickActions.push({
-        id: 'att',
-        label: lang === 'th' ? 'เช็คชื่อโรงเรียน' : 'Attendance',
-        tab: 'attendance',
-        icon: UserCheck,
-        primary: morningQuickActions.length === 0,
-      });
-    }
-  } else if (currentRole === 'teacher') {
-    if (isModuleEnabled('timetable')) {
-      morningQuickActions.push({
-        id: 'tt',
-        label: lang === 'th' ? 'ตารางสอนวันนี้' : 'Timetable',
-        tab: 'timetable',
-        icon: Calendar,
-        primary: true,
-      });
-    }
-    if (teacherAttendanceTab) {
-      morningQuickActions.push({
-        id: 'att',
-        label: lang === 'th' ? 'เช็คชื่อประจำวัน/คาบ' : 'Take Attendance',
-        tab: teacherAttendanceTab,
-        icon: UserCheck,
-        primary: morningQuickActions.length === 0,
-      });
-    }
-    if (isModuleEnabled('gradebook')) {
-      morningQuickActions.push({
-        id: 'gb',
-        label: lang === 'th' ? 'บันทึกคะแนน' : 'Record Grades',
-        tab: 'gradebook',
-        icon: Award,
-        primary: morningQuickActions.length === 0,
-      });
-    }
-  } else if (currentRole === 'student') {
-    if (studentCanSelfCheckin) {
-      morningQuickActions.push({
-        id: 'checkin',
-        label: lang === 'th' ? 'เช็คชื่อเข้าเรียน' : 'Check-in Now',
-        tab: 'mobile_checkin',
-        icon: UserCheck,
-        primary: true,
-      });
-    }
-    if (isModuleEnabled('timetable')) {
-      morningQuickActions.push({
-        id: 'tt',
-        label: lang === 'th' ? 'ตารางเรียนวันนี้' : 'My Timetable',
-        tab: 'timetable',
-        icon: Calendar,
-        primary: !studentCanSelfCheckin,
-      });
-    }
-    if (studentCanViewGrades && morningQuickActions.length < 2) {
-      morningQuickActions.push({
-        id: 'gb',
-        label: lang === 'th' ? 'ผลการเรียน' : 'My Grades',
-        tab: 'gradebook',
-        icon: Award,
-      });
-    }
-  } else if (currentRole === 'parent') {
-    if (parentCanViewGrades) {
-      morningQuickActions.push({
-        id: 'gb',
-        label: lang === 'th' ? 'ผลการเรียนบุตรหลาน' : 'Child Grades',
-        tab: 'gradebook',
-        icon: Award,
-        primary: true,
-      });
-    } else if (isModuleEnabled('timetable')) {
-      morningQuickActions.push({
-        id: 'gb',
-        label: lang === 'th' ? 'ตารางเรียนบุตรหลาน' : 'Class Schedule',
-        tab: 'timetable',
-        icon: Calendar,
-        primary: true,
-      });
-    }
-    if (isModuleEnabled('announcements')) {
-      morningQuickActions.push({
-        id: 'ann',
-        label: lang === 'th' ? 'ประกาศโรงเรียน' : 'Announcements',
-        tab: 'announcements',
-        icon: BellRing,
-      });
-    }
-  }
-
   return (
     <div className={`dashboard-print-area flex flex-col min-w-0 max-w-full dash-shell rounded-2xl ${getModuleTone('dashboard')}`}>
       {/* Print-Only Administrative Report Header */}
@@ -1038,48 +954,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
 
           <div className="flex items-center gap-1.5 shrink-0">
-            {canViewExecutiveMonitor && (() => {
-              const isExecReportTab =
-                dashboardTab === 'executive_monitor' ||
-                dashboardTab === 'obec_learning_areas' ||
-                dashboardTab === 'pp6_quality_overview';
-              return (
-                <select
-                  aria-label={lang === 'th' ? 'เลือกประเภทรายงานผู้บริหาร' : 'Select executive report type'}
-                  value={isExecReportTab ? dashboardTab : ''}
-                  onChange={(e) => {
-                    const next = e.target.value;
-                    if (
-                      next === 'executive_monitor' ||
-                      next === 'obec_learning_areas' ||
-                      next === 'pp6_quality_overview'
-                    ) {
-                      setDashboardTab(next);
-                    }
-                  }}
-                  className={`h-9 px-2.5 rounded-lg border text-xs font-semibold cursor-pointer focus:outline-hidden transition ${
-                    isExecReportTab
-                      ? 'border-[var(--color-primary)] bg-[var(--color-primary-light)] text-[var(--color-primary-text)]'
-                      : 'border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-title)] hover:border-[var(--color-primary)]'
-                  }`}
-                >
-                  {!isExecReportTab && (
-                    <option value="" disabled>
-                      {lang === 'th' ? 'เลือกรายงานผู้บริหาร...' : 'Executive Reports...'}
-                    </option>
-                  )}
-                  <option value="executive_monitor">
-                    {lang === 'th' ? 'รายงาน: จอมอนิเตอร์ (MIS)' : 'Report: Executive MIS'}
-                  </option>
-                  <option value="obec_learning_areas">
-                    {lang === 'th' ? 'รายงาน: 8 กลุ่มสาระฯ สพฐ.' : 'Report: OBEC 8 Areas'}
-                  </option>
-                  <option value="pp6_quality_overview">
-                    {lang === 'th' ? 'รายงาน: คุณภาพ ปพ.6' : 'Report: OBEC Pp.6'}
-                  </option>
-                </select>
-              );
-            })()}
             {isFocusMode && (
               <button
                 type="button"
@@ -1245,24 +1119,88 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             />
           ) : (
           <div className="dash-scroll-stack animate-in fade-in duration-150">
-            {morningQuickActions.length > 0 && (
-              <nav aria-label={lang === 'th' ? 'ทางลัดประจำวัน' : 'Daily shortcuts'} className="no-print flex flex-wrap items-center justify-end gap-2">
-                {morningQuickActions.slice(0, 2).map((act) => {
-                  const ActionIcon = act.icon;
-                  return (
+            {currentRole === 'teacher' && (isModuleEnabled('mobile_checkin') || isModuleEnabled('attendance')) && (() => {
+              const inRec = myTeacherTodayAttendance.checkIn;
+              const outRec = myTeacherTodayAttendance.checkOut;
+              const inTime = formatShortAttendanceTime(inRec?.time);
+              const outTime = formatShortAttendanceTime(outRec?.time || inRec?.checkOutTime);
+              const inPhoto = inRec ? resolveRecordPhotoSource(inRec) : undefined;
+              const outPhoto = outRec ? resolveRecordPhotoSource(outRec) : undefined;
+              return (
+                <section className="no-print saas-card px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    {inPhoto ? (
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => inRec && openPhotoRecord(inRec)}
+                          className="w-11 h-11 rounded-xl overflow-hidden border border-[var(--color-border)] bg-[var(--color-card-subtle)] shrink-0 cursor-pointer hover:ring-2 hover:ring-[var(--color-primary)] transition"
+                          aria-label={lang === 'th' ? 'ดูรูปลงเวลาเข้าของฉัน' : 'View check-in photo'}
+                        >
+                          <AttendancePhoto
+                            src={inPhoto}
+                            alt={userDisplayName}
+                            className="w-full h-full object-cover"
+                          />
+                        </button>
+                        {outPhoto && (
+                          <button
+                            type="button"
+                            onClick={() => outRec && openPhotoRecord(outRec)}
+                            className="w-11 h-11 rounded-xl overflow-hidden border border-[var(--color-border)] bg-[var(--color-card-subtle)] shrink-0 cursor-pointer hover:ring-2 hover:ring-[var(--color-primary)] transition"
+                            aria-label={lang === 'th' ? 'ดูรูปลงเวลาออกของฉัน' : 'View check-out photo'}
+                          >
+                            <AttendancePhoto
+                              src={outPhoto}
+                              alt={userDisplayName}
+                              className="w-full h-full object-cover"
+                            />
+                          </button>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="w-11 h-11 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-emerald-700 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                        <Camera className="w-4 h-4" />
+                      </div>
+                    )}
+                    <div className="min-w-0">
+                      <p className="type-card-title truncate">
+                        {lang === 'th' ? 'ลงเวลาปฏิบัติหน้าที่วันนี้ของฉัน' : 'My Check-in & Check-out Today'}
+                      </p>
+                      <p className="type-meta tabular-nums truncate">
+                        {inTime
+                          ? lang === 'th'
+                            ? `เข้า ${inTime} น.${outTime ? ` · ออก ${outTime} น.` : ' · ยังไม่ลงเวลาออก'}`
+                            : `In ${inTime}${outTime ? ` · Out ${outTime}` : ''}`
+                          : lang === 'th'
+                            ? 'ยังไม่ได้ลงเวลาเข้าโรงเรียนวันนี้'
+                            : 'Not checked in yet today'}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    {inRec && (
+                      <button
+                        type="button"
+                        onClick={() => openPhotoRecord(outRec || inRec)}
+                        className="btn-tool-neutral px-3 py-1.5"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                        <span>{lang === 'th' ? 'ดูรูปถ่าย' : 'View Photo'}</span>
+                      </button>
+                    )}
                     <button
-                      key={act.id}
                       type="button"
-                      onClick={() => onNavigate(act.tab)}
-                      className={act.primary ? 'btn-action-primary px-3.5 py-2' : 'btn-tool-neutral px-3.5 py-2'}
+                      onClick={() => onNavigate(isModuleEnabled('mobile_checkin') ? 'mobile_checkin' : 'attendance')}
+                      className="btn-action-primary px-3.5 py-1.5"
                     >
-                      {ActionIcon && <ActionIcon className="w-3.5 h-3.5" />}
-                      <span>{act.label}</span>
+                      <Camera className="w-3.5 h-3.5" />
+                      <span>{inTime ? (lang === 'th' ? 'ลงเวลา / ประวัติ' : 'Clock / History') : (lang === 'th' ? 'ลงเวลาเข้า' : 'Check In')}</span>
                     </button>
-                  );
-                })}
-              </nav>
-            )}
+                  </div>
+                </section>
+              );
+            })()}
 
             {/* STRICTLY 3 ROLE-ADAPTED LARGE KPI CELLS */}
             <section
@@ -2215,6 +2153,39 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
           </div>
         )}
+
+        {/* UNIFIED EXECUTIVE REPORTS INLINE SWITCHER */}
+        {canViewExecutiveMonitor &&
+          (dashboardTab === 'executive_monitor' ||
+            dashboardTab === 'obec_learning_areas' ||
+            dashboardTab === 'pp6_quality_overview') && (
+            <div className="no-print seg-tab-group w-fit max-w-full overflow-x-auto no-scrollbar">
+              <button
+                type="button"
+                data-active={dashboardTab === 'executive_monitor'}
+                onClick={() => setDashboardTab('executive_monitor')}
+                className="seg-tab-btn"
+              >
+                {lang === 'th' ? 'จอมอนิเตอร์ (MIS)' : 'Executive MIS'}
+              </button>
+              <button
+                type="button"
+                data-active={dashboardTab === 'obec_learning_areas'}
+                onClick={() => setDashboardTab('obec_learning_areas')}
+                className="seg-tab-btn"
+              >
+                {lang === 'th' ? '8 กลุ่มสาระฯ สพฐ.' : 'OBEC 8 Areas'}
+              </button>
+              <button
+                type="button"
+                data-active={dashboardTab === 'pp6_quality_overview'}
+                onClick={() => setDashboardTab('pp6_quality_overview')}
+                className="seg-tab-btn"
+              >
+                {lang === 'th' ? 'คุณภาพ ปพ.6' : 'OBEC Pp.6'}
+              </button>
+            </div>
+          )}
 
         {/* UNIFIED LENS: EXECUTIVE MONITOR */}
         {dashboardTab === 'executive_monitor' && canViewExecutiveMonitor && school && (
