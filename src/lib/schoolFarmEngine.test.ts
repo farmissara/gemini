@@ -11,7 +11,9 @@ import {
   claimDisciplineSupplies,
   claimFarmAchievement,
   clearWeedOnTile,
+  collectAllReadyForBuilding,
   collectBuildingYield,
+  collectReadyProductionJob,
   computeDisciplineChestSummary,
   computeStudentPresentStreak,
   constructBuildingOnTile,
@@ -20,11 +22,13 @@ import {
   createInitialFarmState,
   DEFAULT_FARM_OWNER_CHARACTER,
   dismissVisitorRequest,
+  enqueueProductionJob,
   expandFarmGridTo8x8,
   fertilizeTile,
   fulfillMarketOrder,
   fulfillVisitorRequest,
   generateDailyDirtListings,
+  getBuildingMaxQueueSlots,
   getFarmAchievementProgress,
   getFarmGridSize,
   getNpcDailyQuotaStatus,
@@ -34,6 +38,7 @@ import {
   normalizeFarmState,
   plantCropOnTile,
   sellCropFromBarn,
+  speedUpProductionJob,
   spinDailyLuckyWheel,
   syncBehaviorWeedsOntoFarm,
   tillPlotTile,
@@ -771,6 +776,78 @@ describe('schoolFarmEngine', () => {
     const boughtNpc = buyDailyDirtBargain(state, npcAd);
     assert.equal(boughtNpc.ok, true);
     assert.equal(boughtNpc.state.coins, coinsBeforeBuy - npcAd.priceCoins);
+  });
+
+  it('supports Thai Integrated Farm crops, multi-tier Garden Café production chains, and timed production queues', () => {
+    let state = createInitialFarmState({
+      schoolId: 'sch-1',
+      userId: 'usr-cafe',
+      ownerName: 'ใบชา',
+    });
+
+    // Starter farm already owns herbal_pavilion & garden_cafe, plus ready butterfly_pea at tile index 20 (3,2)
+    assert.ok(state.tiles.some((t) => t.buildingId === 'herbal_pavilion'));
+    assert.ok(state.tiles.some((t) => t.buildingId === 'garden_cafe'));
+    assert.equal(getBuildingMaxQueueSlots(state, 'herbal_pavilion'), 3);
+
+    // Harvest starter butterfly_pea at index 20 -> (3,2)
+    const harvestedBp = harvestTile(state, 20);
+    assert.equal(harvestedBp.ok, true);
+    assert.equal(harvestedBp.cropId, 'butterfly_pea');
+    state = harvestedBp.state;
+
+    // Seed barn with pandan and milk to test full chain:
+    // butterfly_pea + pandan -> herbal_tea_base (herbal_pavilion) -> butterfly_pea_latte (garden_cafe)
+    state = {
+      ...state,
+      barn: { ...state.barn, butterfly_pea: 2, pandan: 2 },
+      goods: { ...state.goods, milk: 1 },
+    };
+
+    const t0 = 1_700_000_000_000;
+    const queuedTea = enqueueProductionJob(state, 'herbal_tea_base', t0);
+    assert.equal(queuedTea.ok, true);
+    assert.ok(queuedTea.job);
+    state = queuedTea.state;
+    assert.equal(state.barn.butterfly_pea, 1);
+    assert.equal(state.barn.pandan, 1);
+
+    // Collecting early fails cleanly
+    const tooEarly = collectReadyProductionJob(state, queuedTea.job.id, t0 + 1000);
+    assert.equal(tooEarly.ok, false);
+
+    // Collecting after craftTimeSec (15s) succeeds
+    const collectedTea = collectReadyProductionJob(state, queuedTea.job.id, t0 + 20_000);
+    assert.equal(collectedTea.ok, true);
+    assert.equal(collectedTea.productId, 'herbal_tea_base');
+    state = collectedTea.state;
+    assert.equal(state.goods.herbal_tea_base, 1);
+
+    // Tier-2 craft at garden_cafe: herbal_tea_base + milk -> butterfly_pea_latte
+    const queuedLatte = enqueueProductionJob(state, 'butterfly_pea_latte', t0 + 20_000);
+    assert.equal(queuedLatte.ok, true);
+    assert.ok(queuedLatte.job);
+    state = queuedLatte.state;
+    assert.equal(state.goods.herbal_tea_base, 0);
+    assert.equal(state.goods.milk, 0);
+
+    // Enqueue another herbal tea base and speed it up for 10 coins
+    const queuedTea2 = enqueueProductionJob(state, 'herbal_tea_base', t0 + 21_000);
+    assert.equal(queuedTea2.ok, true);
+    assert.ok(queuedTea2.job);
+    state = queuedTea2.state;
+    const coinsBeforeSpeed = state.coins;
+    const sped = speedUpProductionJob(state, queuedTea2.job.id, 10);
+    assert.equal(sped.ok, true);
+    state = sped.state;
+    assert.equal(state.coins, coinsBeforeSpeed - 10);
+    assert.equal(state.goods.herbal_tea_base, 1);
+
+    // Batch-collect ready items at garden_cafe once finished
+    const batch = collectAllReadyForBuilding(state, 'garden_cafe', t0 + 100_000);
+    assert.equal(batch.collectedCount, 1);
+    state = batch.state;
+    assert.equal(state.goods.butterfly_pea_latte, 1);
   });
 });
 

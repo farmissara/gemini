@@ -12,6 +12,7 @@ import {
   type FarmTile,
   type FarmTool,
   type ProductId,
+  type ProductionQueueJob,
   type VisitorRequest,
 } from '../../lib/schoolFarmEngine';
 
@@ -40,12 +41,15 @@ interface IsometricFarmBoardProps {
   ordersCount?: number;
   roadsideCount?: number;
   visitors?: VisitorRequest[];
+  productionQueue?: ProductionQueueJob[];
+  nowMs?: number;
   truckAnimating?: boolean;
   spinAvailable?: boolean;
   onTileActivate: (tileIndex: number) => void;
   onOpenMarket?: () => void;
   onOpenShop?: () => void;
   onOpenVisitors?: () => void;
+  onOpenProduction?: (buildingId?: BuildingId) => void;
   onOpenCharacter?: () => void;
   onOpenWheel?: () => void;
   onOpenBarn?: () => void;
@@ -200,6 +204,54 @@ const renderCropArt = (
           </g>
         </g>
       );
+    case 'butterfly_pea':
+      return (
+        <g transform={`translate(${cx}, ${cy}) scale(${scale})`}>
+          <g className="farm-harvest-bounce">
+            <path d="M-12 2 Q-8 -18 0 -22 Q8 -18 12 2" fill="#15803d" stroke="#14532d" strokeWidth="1.2" />
+            <circle cx="-6" cy="-12" r="4.8" fill="#6366f1" stroke="#312e81" strokeWidth="1.1" />
+            <circle cx="6" cy="-10" r="4.8" fill="#4f46e5" stroke="#312e81" strokeWidth="1.1" />
+            <circle cx="0" cy="-19" r="5.2" fill="#818cf8" stroke="#312e81" strokeWidth="1.1" />
+            <circle cx="0" cy="-19" r="1.8" fill="#fef08a" />
+            <circle cx="-6" cy="-12" r="1.5" fill="#fef08a" />
+          </g>
+        </g>
+      );
+    case 'pandan':
+      return (
+        <g transform={`translate(${cx}, ${cy}) scale(${scale})`}>
+          <g className="farm-harvest-bounce">
+            <path d="M0 4 C-8 -10 -14 -20 -10 -25 C-5 -18 -2 -8 0 4 Z" fill="#16a34a" stroke="#14532d" strokeWidth="1.1" />
+            <path d="M0 4 C-2 -12 0 -24 2 -27 C5 -18 3 -7 0 4 Z" fill="#22c55e" stroke="#14532d" strokeWidth="1.1" />
+            <path d="M0 4 C7 -10 14 -18 12 -23 C6 -16 3 -7 0 4 Z" fill="#4ade80" stroke="#14532d" strokeWidth="1.1" />
+          </g>
+        </g>
+      );
+    case 'coconut':
+      return (
+        <g transform={`translate(${cx}, ${cy}) scale(${scale})`}>
+          <g className="farm-harvest-bounce">
+            <rect x="-2.2" y="-16" width="4.4" height="19" rx="2" fill="#92400e" stroke="#451a03" strokeWidth="1" />
+            <path d="M0 -16 C-11 -22 -17 -14 -14 -9" stroke="#16a34a" strokeWidth="3.2" fill="none" strokeLinecap="round" />
+            <path d="M0 -16 C11 -22 17 -14 14 -9" stroke="#22c55e" strokeWidth="3.2" fill="none" strokeLinecap="round" />
+            <path d="M0 -17 C-4 -27 4 -27 8 -20" stroke="#4ade80" strokeWidth="2.8" fill="none" strokeLinecap="round" />
+            <circle cx="-4" cy="-11" r="4.2" fill="#65a30d" stroke="#365314" strokeWidth="1.1" />
+            <circle cx="4" cy="-10" r="4.2" fill="#84cc16" stroke="#365314" strokeWidth="1.1" />
+          </g>
+        </g>
+      );
+    case 'mango':
+      return (
+        <g transform={`translate(${cx}, ${cy}) scale(${scale})`}>
+          <g className="farm-harvest-bounce">
+            <rect x="-2" y="-12" width="4" height="15" rx="1.5" fill="#78350f" />
+            <ellipse cx="0" cy="-16" rx="14" ry="10" fill="#16a34a" stroke="#14532d" strokeWidth="1.2" />
+            <ellipse cx="-6" cy="-14" rx="3.4" ry="4.8" transform="rotate(-15 -6 -14)" fill="#fbbf24" stroke="#b45309" strokeWidth="1" />
+            <ellipse cx="5" cy="-13" rx="3.4" ry="4.8" transform="rotate(15 5 -13)" fill="#f59e0b" stroke="#b45309" strokeWidth="1" />
+            <ellipse cx="0" cy="-19" rx="3.2" ry="4.4" fill="#fde047" stroke="#b45309" strokeWidth="1" />
+          </g>
+        </g>
+      );
     case 'pumpkin':
       return (
         <g transform={`translate(${cx}, ${cy}) scale(${scale})`}>
@@ -256,31 +308,99 @@ const renderBuildingArt = (
         </g>
       );
     case 'farm_cottage':
-      // Hay Day iconic white farmhouse with dark slate-blue pitched roof & white porch!
+      // Thai Garden Teak Cottage with warm tiered gable roof & wooden deck!
       return (
         <g transform={`translate(${cx}, ${cy}) scale(${scale})`}>
-          {/* Stone chimney */}
-          <rect x="8" y="-36" width="5.5" height="12" fill="#94a3b8" stroke="#334155" strokeWidth="1.1" />
-          {/* Wooden porch base */}
-          <polygon points="-24,0 0,12 24,0 0,-12" fill="#b45309" stroke="#78350f" strokeWidth="1.2" />
-          {/* Cream/sky siding walls */}
-          <polygon points="-20,-1 0,9 0,-15 -20,-25" fill="#e0f2fe" stroke="#334155" strokeWidth="1.3" />
-          <polygon points="0,9 20,-1 20,-25 0,-15" fill="#bae6fd" stroke="#334155" strokeWidth="1.3" />
-          {/* White porch columns & railing */}
-          <line x1="-18" y1="0" x2="-18" y2="-16" stroke="#ffffff" strokeWidth="2.2" />
-          <line x1="-2" y1="8" x2="-2" y2="-8" stroke="#ffffff" strokeWidth="2.2" />
-          <line x1="-18" y1="-4" x2="-2" y2="4" stroke="#ffffff" strokeWidth="1.8" />
-          {/* Door & flower boxes */}
-          <polygon points="-12,-3 -7,-0.5 -7,-11 -12,-13.5" fill="#ffffff" stroke="#475569" strokeWidth="0.9" />
-          <polygon points="6,-4 14,-8 14,-15 6,-11" fill="#38bdf8" stroke="#0369a1" strokeWidth="1" />
-          <ellipse cx="10" cy="-5" rx="4.5" ry="2" fill="#f43f5e" />
-          {/* Classic dark slate-blue Hay Day roof */}
-          <polygon points="-24,-23 0,-39 24,-23 0,-11" fill="#1e3a5f" stroke={roofTrim || '#0f172a'} strokeWidth={roofTrim ? 2 : 1.4} />
-          <polygon points="-10,-28 0,-36 10,-28 0,-21" fill="#334155" opacity="0.65" />
-          {/* Gentle chimney smoke puffs */}
+          {/* Raised teak wooden terrace */}
+          <polygon points="-24,1 0,13 24,1 0,-11" fill="#b45309" stroke="#78350f" strokeWidth="1.2" />
+          {/* Warm cream stucco & teak timber walls */}
+          <polygon points="-20,-1 0,9 0,-14 -20,-24" fill="#fef3c7" stroke="#78350f" strokeWidth="1.3" />
+          <polygon points="0,9 20,-1 20,-24 0,-14" fill="#fde68a" stroke="#78350f" strokeWidth="1.3" />
+          {/* Wooden porch railing & warm lantern */}
+          <line x1="-18" y1="0" x2="-18" y2="-15" stroke="#78350f" strokeWidth="2.2" />
+          <line x1="-2" y1="8" x2="-2" y2="-7" stroke="#78350f" strokeWidth="2.2" />
+          <circle cx="-10" cy="-10" r="2.2" fill="#fbbf24" />
+          {/* Arched Thai wooden door & flower planter */}
+          <polygon points="-12,-3 -7,-0.5 -7,-11 -12,-13.5" fill="#92400e" stroke="#451a03" strokeWidth="0.9" />
+          <polygon points="6,-4 14,-8 14,-15 6,-11" fill="#bae6fd" stroke="#0369a1" strokeWidth="1" />
+          <ellipse cx="10" cy="-4.5" rx="4.5" ry="2" fill="#22c55e" />
+          <circle cx="9" cy="-5" r="1.5" fill="#f43f5e" />
+          {/* Tiered Thai terracotta-wood hipped roof */}
+          <polygon points="-25,-22 0,-38 25,-22 0,-10" fill="#9a3412" stroke={roofTrim || '#451a03'} strokeWidth={roofTrim ? 2 : 1.4} />
+          <polygon points="-13,-28 0,-42 13,-28 0,-21" fill="#b45309" stroke="#78350f" strokeWidth="1.2" />
+          <circle cx="0" cy="-43" r="1.8" fill="#facc15" />
+        </g>
+      );
+    case 'garden_cafe':
+      // Natural Garden Cafe: Bamboo-glass pavilion, botanical striped awning & steaming teacup crest!
+      return (
+        <g transform={`translate(${cx}, ${cy}) scale(${scale})`}>
+          {/* Teak garden deck */}
+          <polygon points="-24,1 0,13 24,1 0,-11" fill="#a16207" stroke="#78350f" strokeWidth="1.2" />
+          {/* Glass & bamboo cafe walls */}
+          <polygon points="-20,-1 0,9 0,-14 -20,-24" fill="#ecfdf5" fillOpacity="0.92" stroke="#15803d" strokeWidth="1.3" />
+          <polygon points="0,9 20,-1 20,-24 0,-14" fill="#d1fae5" fillOpacity="0.92" stroke="#15803d" strokeWidth="1.3" />
+          {/* Window panes & cafe counter */}
+          <polygon points="-15,-5 -4,0 -4,-10 -15,-15" fill="#bae6fd" stroke="#0369a1" strokeWidth="1" />
+          <polygon points="5,-5 15,-10 15,-18 5,-13" fill="#fef3c7" stroke="#b45309" strokeWidth="1" />
+          {/* Striped Forest-Green & Cream Garden Awning */}
+          <polygon points="-25,-21 0,-36 25,-21 0,-9" fill="#15803d" stroke={roofTrim || '#14532d'} strokeWidth={roofTrim ? 2 : 1.4} />
+          <polygon points="-13,-28 0,-36 5,-33 -8,-17" fill="#fefce8" opacity="0.9" />
+          <polygon points="2,-35 12,-28 0,-13 -5,-16" fill="#fefce8" opacity="0.9" />
+          {/* Cute hanging Coffee/Tea Cup Sign on roof */}
+          <circle cx="0" cy="-37" r="6.5" fill="#fffbeb" stroke="#78350f" strokeWidth="1.3" />
+          <rect x="-3" y="-39" width="6" height="4.5" rx="1.2" fill="#6366f1" />
+          {/* Outdoor cafe parasol table */}
+          <circle cx="-15" cy="5" r="4.5" fill="#fef3c7" stroke="#78350f" strokeWidth="1" />
           <g className="farm-smoke-rise">
-            <circle cx="11" cy="-41" r="2.8" fill="#ffffff" opacity="0.65" />
-            <circle cx="14" cy="-47" r="3.6" fill="#ffffff" opacity="0.45" />
+            <circle cx="-1" cy="-46" r="2.2" fill="#ffffff" opacity="0.7" />
+            <circle cx="2" cy="-50" r="2.8" fill="#ffffff" opacity="0.5" />
+          </g>
+        </g>
+      );
+    case 'herbal_pavilion':
+      // Open wooden herbal pavilion with drying butterfly pea & pandan bundles
+      return (
+        <g transform={`translate(${cx}, ${cy}) scale(${scale})`}>
+          <polygon points="-21,0 0,10 21,0 0,-10" fill="#d97706" stroke="#78350f" strokeWidth="1.2" />
+          <line x1="-17" y1="-1" x2="-17" y2="-20" stroke="#78350f" strokeWidth="2.4" />
+          <line x1="17" y1="-1" x2="17" y2="-20" stroke="#78350f" strokeWidth="2.4" />
+          <line x1="0" y1="8" x2="0" y2="-13" stroke="#78350f" strokeWidth="2.4" />
+          {/* Hanging herbal bundles */}
+          <ellipse cx="-8" cy="-13" rx="3.2" ry="5" fill="#6366f1" stroke="#312e81" strokeWidth="0.9" />
+          <ellipse cx="8" cy="-13" rx="3.2" ry="5" fill="#22c55e" stroke="#14532d" strokeWidth="0.9" />
+          {/* Woven bamboo thatched roof */}
+          <polygon points="-23,-18 0,-34 23,-18 0,-8" fill="#ca8a04" stroke={roofTrim || '#78350f'} strokeWidth={roofTrim ? 2 : 1.4} />
+          <circle cx="0" cy="-2" r="4.2" fill="#818cf8" stroke="#ffffff" strokeWidth="1" />
+        </g>
+      );
+    case 'thai_kitchen':
+      // Traditional Thai Garden Kitchen with clay stove, wok & coconut basket
+      return (
+        <g transform={`translate(${cx}, ${cy}) scale(${scale})`}>
+          <polygon points="-21,0 0,10 0,-12 -21,-22" fill="#fef3c7" stroke="#78350f" strokeWidth="1.3" />
+          <polygon points="0,10 21,0 21,-22 0,-12" fill="#fde68a" stroke="#78350f" strokeWidth="1.3" />
+          <polygon points="-24,-20 0,-36 24,-20 0,-9" fill="#b45309" stroke={roofTrim || '#78350f'} strokeWidth={roofTrim ? 2 : 1.4} />
+          {/* Clay stove & golden mango display */}
+          <ellipse cx="10" cy="4" rx="5.5" ry="3.5" fill="#9a3412" stroke="#451a03" strokeWidth="1" />
+          <circle cx="10" cy="2" r="2.2" fill="#fbbf24" />
+          <circle cx="-11" cy="3" r="3.5" fill="#65a30d" stroke="#365314" strokeWidth="0.9" />
+          <g className="farm-smoke-rise">
+            <circle cx="-4" cy="-39" r="2.6" fill="#ffffff" opacity="0.65" />
+            <circle cx="-1" cy="-45" r="3.2" fill="#ffffff" opacity="0.45" />
+          </g>
+        </g>
+      );
+    case 'lotus_fish_pond':
+      return (
+        <g transform={`translate(${cx}, ${cy}) scale(${scale})`}>
+          <ellipse cx="0" cy="-1" rx="22" ry="11" fill="#0ea5e9" stroke="#65a30d" strokeWidth="2.4" />
+          <ellipse cx="-6" cy="1" rx="6" ry="3.2" fill="#16a34a" />
+          <ellipse cx="9" cy="-2" rx="5.5" ry="3" fill="#22c55e" />
+          <circle cx="-6" cy="-1" r="3.4" fill="#f472b6" stroke="#be185d" strokeWidth="0.9" />
+          <circle cx="9" cy="-4" r="3" fill="#fbcfe8" stroke="#be185d" strokeWidth="0.8" />
+          <g className="farm-animal-bob">
+            <ellipse cx="1" cy="3" rx="3.8" ry="1.8" fill="#f97316" />
           </g>
         </g>
       );
@@ -380,20 +500,20 @@ const renderBuildingArt = (
     case 'wooden_fence':
       return (
         <g transform={`translate(${cx}, ${cy}) scale(${scale})`}>
-          <line x1="-22" y1="-2" x2="22" y2="-10" stroke="#fef3c7" strokeWidth="3.2" strokeLinecap="round" />
-          <line x1="-22" y1="3" x2="22" y2="-5" stroke="#fde68a" strokeWidth="3.2" strokeLinecap="round" />
-          <rect x="-20" y="-10" width="4" height="16" rx="1" fill="#d97706" stroke="#78350f" strokeWidth="1" />
-          <rect x="-2" y="-14" width="4" height="16" rx="1" fill="#d97706" stroke="#78350f" strokeWidth="1" />
-          <rect x="16" y="-18" width="4" height="16" rx="1" fill="#d97706" stroke="#78350f" strokeWidth="1" />
+          <line x1="-22" y1="-2" x2="22" y2="-10" stroke="#bef264" strokeWidth="3.2" strokeLinecap="round" />
+          <line x1="-22" y1="3" x2="22" y2="-5" stroke="#a3e635" strokeWidth="3.2" strokeLinecap="round" />
+          <rect x="-20" y="-10" width="4" height="16" rx="1.5" fill="#65a30d" stroke="#365314" strokeWidth="1" />
+          <rect x="-2" y="-14" width="4" height="16" rx="1.5" fill="#65a30d" stroke="#365314" strokeWidth="1" />
+          <rect x="16" y="-18" width="4" height="16" rx="1.5" fill="#65a30d" stroke="#365314" strokeWidth="1" />
         </g>
       );
     case 'cobble_path':
       return (
         <g transform={`translate(${cx}, ${cy}) scale(${scale})`}>
-          <ellipse cx="-8" cy="-2" rx="7.5" ry="3.8" fill="#e2e8f0" stroke="#64748b" strokeWidth="1" />
-          <ellipse cx="9" cy="1" rx="6.5" ry="3.2" fill="#cbd5e1" stroke="#64748b" strokeWidth="1" />
-          <ellipse cx="1" cy="-6" rx="7" ry="3.2" fill="#f1f5f9" stroke="#64748b" strokeWidth="1" />
-          <ellipse cx="-2" cy="5" rx="6.5" ry="3" fill="#e2e8f0" stroke="#64748b" strokeWidth="1" />
+          <ellipse cx="-8" cy="-2" rx="7.5" ry="3.8" fill="#d97706" stroke="#78350f" strokeWidth="1" />
+          <ellipse cx="9" cy="1" rx="6.5" ry="3.2" fill="#b45309" stroke="#78350f" strokeWidth="1" />
+          <ellipse cx="1" cy="-6" rx="7" ry="3.2" fill="#f59e0b" stroke="#78350f" strokeWidth="1" />
+          <ellipse cx="-2" cy="5" rx="6.5" ry="3" fill="#d97706" stroke="#78350f" strokeWidth="1" />
         </g>
       );
     default:
@@ -419,12 +539,15 @@ export const IsometricFarmBoard: React.FC<IsometricFarmBoardProps> = ({
   ordersCount = 0,
   roadsideCount = 0,
   visitors = [],
+  productionQueue = [],
+  nowMs = Date.now(),
   truckAnimating = false,
   spinAvailable = false,
   onTileActivate,
   onOpenMarket,
   onOpenShop,
   onOpenVisitors,
+  onOpenProduction,
   onOpenCharacter,
   onOpenWheel,
   onOpenBarn,
@@ -620,13 +743,13 @@ export const IsometricFarmBoard: React.FC<IsometricFarmBoardProps> = ({
       {fullscreenLandscape && !readOnly && (
         <div
           onPointerDown={(e) => e.stopPropagation()}
-          className="absolute right-2.5 top-24 z-20 hidden sm:flex flex-col gap-1 rounded-2xl border-2 border-[#78350f] bg-[#fffbeb]/90 p-1 shadow-[0_3px_0_#78350f]"
+          className="absolute right-3 top-22 z-20 hidden sm:flex flex-col gap-1 rounded-2xl border border-[#d6b37c]/55 bg-[#2a2015]/75 backdrop-blur-md p-1 shadow-lg"
         >
           <button
             type="button"
             onClick={() => setZoom((z) => Number(Math.min(1.75, z + 0.15).toFixed(2)))}
             aria-label="Zoom In"
-            className="w-7 h-7 rounded-xl bg-amber-100 hover:bg-amber-200 text-[#451a03] font-black text-sm flex items-center justify-center cursor-pointer"
+            className="w-7 h-7 rounded-xl bg-amber-100/15 hover:bg-amber-100/25 text-amber-100 font-black text-sm flex items-center justify-center cursor-pointer"
           >
             +
           </button>
@@ -637,7 +760,7 @@ export const IsometricFarmBoard: React.FC<IsometricFarmBoardProps> = ({
               setPan({ x: 0, y: 0 });
             }}
             aria-label="Reset Camera"
-            className="w-7 h-7 rounded-xl bg-white hover:bg-amber-100 text-[#78350f] font-black text-[10px] flex items-center justify-center cursor-pointer"
+            className="w-7 h-7 rounded-xl hover:bg-amber-100/20 text-amber-200 font-black text-[10px] flex items-center justify-center cursor-pointer"
           >
             1×
           </button>
@@ -645,7 +768,7 @@ export const IsometricFarmBoard: React.FC<IsometricFarmBoardProps> = ({
             type="button"
             onClick={() => setZoom((z) => Number(Math.max(0.85, z - 0.15).toFixed(2)))}
             aria-label="Zoom Out"
-            className="w-7 h-7 rounded-xl bg-amber-100 hover:bg-amber-200 text-[#451a03] font-black text-sm flex items-center justify-center cursor-pointer"
+            className="w-7 h-7 rounded-xl bg-amber-100/15 hover:bg-amber-100/25 text-amber-100 font-black text-sm flex items-center justify-center cursor-pointer"
           >
             −
           </button>
@@ -693,41 +816,39 @@ export const IsometricFarmBoard: React.FC<IsometricFarmBoardProps> = ({
           <ellipse cx="620" cy="64" rx="85" ry="20" fill="#ffffff" />
         </g>
 
-        {/* Upper-Left Fruit Orchard (Lemon & Apple Trees matching Hay Day screenshot) */}
+        {/* Upper-Left Tropical Coconut, Banana & Mango Garden Grove */}
         <g transform="translate(68, 108)">
           <ellipse cx="0" cy="20" rx="22" ry="8" fill="#3f6212" opacity="0.26" />
-          <rect x="-4" y="8" width="8" height="16" rx="2" fill="#78350f" />
-          <circle cx="0" cy="-6" r="19" fill="#22c55e" stroke="#14532d" strokeWidth="1.5" />
-          <circle cx="-11" cy="-1" r="12" fill="#4ade80" />
-          <circle cx="11" cy="-2" r="12" fill="#16a34a" />
-          <circle cx="-7" cy="-10" r="2.8" fill="#fde047" stroke="#ca8a04" strokeWidth="0.6" />
-          <circle cx="6" cy="-7" r="2.8" fill="#fde047" stroke="#ca8a04" strokeWidth="0.6" />
-          <circle cx="0" cy="-1" r="2.8" fill="#fde047" stroke="#ca8a04" strokeWidth="0.6" />
-          <circle cx="-4" cy="4" r="2.5" fill="#fde047" />
+          <rect x="-3.5" y="-6" width="7" height="28" rx="3" fill="#92400e" />
+          <path d="M0 -8 C-18 -18 -26 -6 -20 4" stroke="#16a34a" strokeWidth="5" fill="none" strokeLinecap="round" />
+          <path d="M0 -8 C18 -18 26 -6 20 4" stroke="#22c55e" strokeWidth="5" fill="none" strokeLinecap="round" />
+          <path d="M0 -10 C-8 -26 8 -26 14 -14" stroke="#4ade80" strokeWidth="4.5" fill="none" strokeLinecap="round" />
+          <circle cx="-5" cy="-3" r="4" fill="#84cc16" stroke="#365314" strokeWidth="1" />
+          <circle cx="5" cy="-2" r="4" fill="#65a30d" stroke="#365314" strokeWidth="1" />
         </g>
         <g transform="translate(132, 82)">
           <ellipse cx="0" cy="16" rx="18" ry="6" fill="#3f6212" opacity="0.24" />
-          <rect x="-3" y="6" width="6" height="12" rx="2" fill="#78350f" />
-          <circle cx="0" cy="-4" r="15" fill="#16a34a" stroke="#14532d" strokeWidth="1.4" />
-          <circle cx="-6" cy="-7" r="7" fill="#4ade80" opacity="0.7" />
-          <circle cx="5" cy="-6" r="2.4" fill="#ef4444" />
-          <circle cx="-5" cy="-3" r="2.4" fill="#ef4444" />
-          <circle cx="2" cy="1" r="2.4" fill="#ef4444" />
+          <rect x="-3" y="4" width="6" height="14" rx="2" fill="#78350f" />
+          <circle cx="0" cy="-6" r="15" fill="#16a34a" stroke="#14532d" strokeWidth="1.4" />
+          <circle cx="-6" cy="-9" r="7" fill="#4ade80" opacity="0.7" />
+          <ellipse cx="5" cy="-7" rx="2.5" ry="3.5" fill="#fbbf24" />
+          <ellipse cx="-5" cy="-3" rx="2.5" ry="3.5" fill="#f59e0b" />
+          <ellipse cx="2" cy="1" rx="2.3" ry="3.2" fill="#fde047" />
         </g>
         <g transform="translate(54, 178)">
           <ellipse cx="0" cy="16" rx="18" ry="6" fill="#3f6212" opacity="0.24" />
           <rect x="-3" y="6" width="6" height="12" rx="2" fill="#78350f" />
           <circle cx="0" cy="-4" r="15" fill="#22c55e" stroke="#14532d" strokeWidth="1.4" />
-          <circle cx="5" cy="-6" r="2.6" fill="#fde047" />
+          <circle cx="5" cy="-6" r="2.6" fill="#fbbf24" />
           <circle cx="-5" cy="-2" r="2.6" fill="#fde047" />
         </g>
 
-        {/* Purple Lavender Rows & Rustic Wooden Split-Rail Fence (Left Slope like Hay Day!) */}
-        <g transform="translate(160, 154)" opacity="0.92">
-          <path d="M-28 0 L34 -28" stroke="#7c3aed" strokeWidth="7" strokeLinecap="round" />
-          <path d="M-28 0 L34 -28" stroke="#c084fc" strokeWidth="3.5" strokeDasharray="3 5" strokeLinecap="round" />
-          <path d="M-18 11 L44 -17" stroke="#6d28d9" strokeWidth="7" strokeLinecap="round" />
-          <path d="M-18 11 L44 -17" stroke="#d8b4fe" strokeWidth="3.5" strokeDasharray="3 5" strokeLinecap="round" />
+        {/* Butterfly Pea Pergola Vine Rows (Left Slope) */}
+        <g transform="translate(160, 154)" opacity="0.94">
+          <path d="M-28 0 L34 -28" stroke="#312e81" strokeWidth="7" strokeLinecap="round" />
+          <path d="M-28 0 L34 -28" stroke="#818cf8" strokeWidth="3.5" strokeDasharray="3 5" strokeLinecap="round" />
+          <path d="M-18 11 L44 -17" stroke="#15803d" strokeWidth="7" strokeLinecap="round" />
+          <path d="M-18 11 L44 -17" stroke="#a5b4fc" strokeWidth="3.5" strokeDasharray="3 5" strokeLinecap="round" />
         </g>
 
         {/* Clickable Hobbit-Style Farm Pantry / Barn Root Cellar (Left Meadow) */}
@@ -1170,27 +1291,62 @@ export const IsometricFarmBoard: React.FC<IsometricFarmBoardProps> = ({
                 </>
               )}
 
-              {isBuilding && (
-                <>
-                  {renderBuildingArt(tile.buildingId, tile.buildingLevel || 1, centerX, centerY, spriteScale)}
-                  {(tile.buildingLevel || 1) > 1 && (
-                    <g transform={`translate(${centerX - 18 * spriteScale}, ${centerY - 22 * spriteScale})`}>
-                      <rect x="-11" y="-7" width="22" height="13" rx="6" fill="#1e293b" stroke="#facc15" strokeWidth="1" />
-                      <text x="0" y="2.5" textAnchor="middle" fontSize="8" fontWeight="800" fill="#fde047">
-                        Lv.{tile.buildingLevel}
-                      </text>
-                    </g>
-                  )}
-                  {buildingYieldReady && !readOnly && (
-                    <g transform={`translate(${centerX}, ${centerY - 35 * spriteScale})`} className="farm-harvest-bounce">
-                      <rect x="-15" y="-9" width="30" height="16" rx="8" fill="#f59e0b" stroke="#ffffff" strokeWidth="1.4" />
-                      <text x="0" y="2" textAnchor="middle" fontSize="9.5" fontWeight="900" fill="#ffffff">
-                        +🪙
-                      </text>
-                    </g>
-                  )}
-                </>
-              )}
+              {isBuilding && (() => {
+                const bJobs = tile.buildingId
+                  ? productionQueue.filter((j) => j.buildingId === tile.buildingId)
+                  : [];
+                const readyJobs = bJobs.filter((j) => nowMs >= j.readyAtMs);
+                const activeJob = bJobs.find((j) => nowMs < j.readyAtMs);
+                const remainSec = activeJob ? Math.max(1, Math.ceil((activeJob.readyAtMs - nowMs) / 1000)) : 0;
+
+                return (
+                  <>
+                    {renderBuildingArt(tile.buildingId, tile.buildingLevel || 1, centerX, centerY, spriteScale)}
+                    {(tile.buildingLevel || 1) > 1 && (
+                      <g transform={`translate(${centerX - 18 * spriteScale}, ${centerY - 22 * spriteScale})`}>
+                        <rect x="-11" y="-7" width="22" height="13" rx="6" fill="#1e293b" stroke="#facc15" strokeWidth="1" />
+                        <text x="0" y="2.5" textAnchor="middle" fontSize="8" fontWeight="800" fill="#fde047">
+                          Lv.{tile.buildingLevel}
+                        </text>
+                      </g>
+                    )}
+                    {readyJobs.length > 0 && !readOnly ? (
+                      <g
+                        transform={`translate(${centerX}, ${centerY - 38 * spriteScale})`}
+                        className="farm-harvest-bounce cursor-pointer"
+                        onClick={(e) => {
+                          if (onOpenProduction && tile.buildingId) {
+                            e.stopPropagation();
+                            onOpenProduction(tile.buildingId);
+                          }
+                        }}
+                      >
+                        <rect x="-20" y="-10" width="40" height="17" rx="8.5" fill="#16a34a" stroke="#ffffff" strokeWidth="1.4" />
+                        <text x="0" y="1.5" textAnchor="middle" fontSize="8.5" fontWeight="900" fill="#ffffff">
+                          รับ ×{readyJobs.length}!
+                        </text>
+                      </g>
+                    ) : activeJob && !readOnly ? (
+                      <g transform={`translate(${centerX}, ${centerY - 36 * spriteScale})`}>
+                        <rect x="-17" y="-9" width="34" height="15" rx="7.5" fill="#1e293b" fillOpacity="0.88" stroke="#fde68a" strokeWidth="1.1" />
+                        <text x="0" y="1.5" textAnchor="middle" fontSize="8" fontWeight="900" fill="#fde68a">
+                          ⏱ {remainSec}s
+                        </text>
+                      </g>
+                    ) : (
+                      buildingYieldReady &&
+                      !readOnly && (
+                        <g transform={`translate(${centerX}, ${centerY - 35 * spriteScale})`} className="farm-harvest-bounce">
+                          <rect x="-15" y="-9" width="30" height="16" rx="8" fill="#f59e0b" stroke="#ffffff" strokeWidth="1.4" />
+                          <text x="0" y="2" textAnchor="middle" fontSize="9.5" fontWeight="900" fill="#ffffff">
+                            +🪙
+                          </text>
+                        </g>
+                      )
+                    )}
+                  </>
+                );
+              })()}
 
               {isSelected && (
                 <polygon
@@ -1205,13 +1361,13 @@ export const IsometricFarmBoard: React.FC<IsometricFarmBoardProps> = ({
           );
         })}
 
-        {/* Hay Day Roadside Shop Stand + Produce Crates + Mailbox (Bottom-Left Road) */}
+        {/* Thai Bamboo Roadside Garden Produce Stall + Silver Mailbox (Bottom-Left Road) */}
         {!readOnly && (
           <g
             transform="translate(115, 412)"
             role={onOpenShop ? 'button' : undefined}
             tabIndex={onOpenShop ? 0 : -1}
-            aria-label={lang === 'th' ? 'เปิดแผงร้านค้าริมทาง' : 'Open roadside shop'}
+            aria-label={lang === 'th' ? 'เปิดซุ้มขายของหน้าสวน' : 'Open garden roadside stall'}
             onClick={() => onOpenShop?.()}
             onKeyDown={(e) => {
               if (onOpenShop && (e.key === 'Enter' || e.key === ' ')) {
@@ -1234,33 +1390,33 @@ export const IsometricFarmBoard: React.FC<IsometricFarmBoardProps> = ({
             >
               <rect x="-1.5" y="0" width="3" height="12" fill="#78350f" />
               <rect x="-6" y="-8" width="12" height="8" rx="3" fill="#94a3b8" stroke="#334155" strokeWidth="1" />
-              <rect x="3" y="-12" width="2" height="6" fill="#ef4444" />
+              <rect x="3" y="-12" width="2" height="6" fill="#16a34a" />
             </g>
             <ellipse cx="0" cy="14" rx="36" ry="8" fill="#4d7c0f" opacity="0.28" />
             <rect x="-28" y="-4" width="56" height="17" rx="2" fill="#b45309" stroke="#78350f" strokeWidth="1.4" />
             <line x1="-24" y1="-4" x2="-24" y2="-23" stroke="#78350f" strokeWidth="2.6" />
             <line x1="24" y1="-4" x2="24" y2="-23" stroke="#78350f" strokeWidth="2.6" />
-            {/* Iconic Red & White Striped Canopy */}
-            <polygon points="-34,-21 34,-21 28,-36 -28,-36" fill="#ef4444" stroke="#991b1b" strokeWidth="1.4" />
-            <polygon points="-17,-21 -5,-21 -3,-36 -14,-36" fill="#ffffff" />
-            <polygon points="7,-21 19,-21 15,-36 5,-36" fill="#ffffff" />
-            <circle cx="-11" cy="-7" r="4.2" fill="#facc15" stroke="#a16207" strokeWidth="1" />
-            <circle cx="0" cy="-7" r="4.2" fill="#ef4444" stroke="#991b1b" strokeWidth="1" />
-            <circle cx="11" cy="-7" r="4.2" fill="#fb923c" stroke="#9a3412" strokeWidth="1" />
-            <rect x="-34" y="15" width="68" height="16" rx="8" fill="#b45309" stroke="#ffffff" strokeWidth="1.2" />
+            {/* Forest-Green & Cream Bamboo Canopy */}
+            <polygon points="-34,-21 34,-21 28,-36 -28,-36" fill="#15803d" stroke="#14532d" strokeWidth="1.4" />
+            <polygon points="-17,-21 -5,-21 -3,-36 -14,-36" fill="#fefce8" />
+            <polygon points="7,-21 19,-21 15,-36 5,-36" fill="#fefce8" />
+            <circle cx="-11" cy="-7" r="4.2" fill="#6366f1" stroke="#312e81" strokeWidth="1" />
+            <circle cx="0" cy="-7" r="4.2" fill="#fbbf24" stroke="#b45309" strokeWidth="1" />
+            <circle cx="11" cy="-7" r="4.2" fill="#22c55e" stroke="#14532d" strokeWidth="1" />
+            <rect x="-35" y="15" width="70" height="16" rx="8" fill="#15803d" stroke="#ffffff" strokeWidth="1.2" />
             <text x="0" y="26" textAnchor="middle" fontSize="8.5" fontWeight="900" fill="#ffffff">
-              แผงริมทาง ({roadsideCount})
+              ซุ้มหน้าสวน ({roadsideCount})
             </text>
           </g>
         )}
 
-        {/* Hay Day NPC Visitors Along Front Road (Right Foreground) */}
+        {/* Garden Cafe Guest Patio Hotspot (Right Foreground) */}
         {!readOnly && visitors.length > 0 && (
           <g
             transform="translate(650, 365)"
             role={onOpenVisitors ? 'button' : undefined}
             tabIndex={onOpenVisitors ? 0 : -1}
-            aria-label={lang === 'th' ? 'คุยกับชาวบ้านผู้มาเยือนฟาร์ม' : 'Talk to farm visitors'}
+            aria-label={lang === 'th' ? 'เปิดเคาน์เตอร์คาเฟ่รับออเดอร์แขกในสวน' : 'Serve garden cafe guests'}
             onClick={() => onOpenVisitors?.()}
             onKeyDown={(e) => {
               if (onOpenVisitors && (e.key === 'Enter' || e.key === ' ')) {
@@ -1270,8 +1426,11 @@ export const IsometricFarmBoard: React.FC<IsometricFarmBoardProps> = ({
             }}
             className={onOpenVisitors ? 'cursor-pointer group' : ''}
           >
+            {/* Garden Patio Parasol & Wooden Table */}
+            <ellipse cx="0" cy="14" rx="34" ry="10" fill="#3f6212" opacity="0.22" />
+            <ellipse cx="0" cy="4" rx="13" ry="5" fill="#d97706" stroke="#78350f" strokeWidth="1.2" />
             {visitors.slice(0, 2).map((vis, idx) => {
-              const ox = idx === 0 ? -24 : 20;
+              const ox = idx === 0 ? -24 : 22;
               const shirt =
                 vis.npcId === 'aunt_malee'
                   ? '#ec4899'
@@ -1298,18 +1457,18 @@ export const IsometricFarmBoard: React.FC<IsometricFarmBoardProps> = ({
                   )}
                   {idx === 0 && (
                     <g transform="translate(0, -34)">
-                      <rect x="-38" y="-11" width="76" height="18" rx="9" fill="#ffffff" stroke="#0f172a" strokeWidth="1.3" />
-                      <text x="0" y="1" textAnchor="middle" fontSize="8" fontWeight="900" fill="#0f172a">
-                        ขอซื้อ {itemLabel?.slice(0, 7)}
+                      <rect x="-42" y="-11" width="84" height="18" rx="9" fill="#fffbeb" stroke="#78350f" strokeWidth="1.3" />
+                      <text x="0" y="1" textAnchor="middle" fontSize="8" fontWeight="900" fill="#451a03">
+                        ☕ สั่ง {itemLabel?.slice(0, 8)}
                       </text>
                     </g>
                   )}
                 </g>
               );
             })}
-            <rect x="-35" y="18" width="70" height="15" rx="7.5" fill="#e11d48" stroke="#ffffff" strokeWidth="1.2" />
+            <rect x="-38" y="18" width="76" height="15" rx="7.5" fill="#b45309" stroke="#fef3c7" strokeWidth="1.2" />
             <text x="0" y="28.5" textAnchor="middle" fontSize="8" fontWeight="900" fill="#ffffff">
-              ชาวบ้าน ({visitors.length})
+              คาเฟ่ในสวน ({visitors.length})
             </text>
           </g>
         )}
