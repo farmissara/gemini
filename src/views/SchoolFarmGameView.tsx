@@ -49,6 +49,7 @@ import {
   buyFromNeighborRoadsideShop,
   buySeedPack,
   calculateTownProsperity,
+  claimBeginnerPracticePack,
   claimDisciplineSupplies,
   claimFarmAchievement,
   clearWeedOnTile,
@@ -291,7 +292,7 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
   const [lastCareTool, setLastCareTool] = useState<FarmTool>('water');
   const [careTrayOpen, setCareTrayOpen] = useState(false);
   const [selectedCropId, setSelectedCropId] = useState<CropId>('butterfly_pea');
-  const [selectedBuildingId, setSelectedBuildingId] = useState<BuildingId>('thai_kitchen');
+  const [selectedBuildingId, setSelectedBuildingId] = useState<BuildingId>('dairy_barn');
   const [buildCategoryFilter, setBuildCategoryFilter] = useState<'all' | 'production' | 'landmark' | 'decor'>('all');
   const [selectedTileIndex, setSelectedTileIndex] = useState<number | null>(null);
 
@@ -1255,6 +1256,21 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
     });
   };
 
+  const handleClaimBeginnerPack = () => {
+    const res = claimBeginnerPracticePack(farmState);
+    if (!res.ok) {
+      emitAppToast({ title: lang === 'th' ? 'รับชุดฝึกหัดแล้ว' : 'Already claimed', message: res.errorTh || '', tone: 'info' });
+      return;
+    }
+    persistFarm(res.state);
+    farmAudio.playSfx('gift');
+    emitAppToast({
+      title: lang === 'th' ? 'รับชุดเสบียงฝึกหัดมือใหม่สำเร็จ!' : 'Starter Pack Claimed!',
+      message: '+12💧 · +200🪙 · +4🌱 · +3★ · เมล็ดพันธุ์และผลผลิตเข้าคลังแล้ว',
+      tone: 'success',
+    });
+  };
+
   const handleBuyDailyDirtAd = (ad: DailyDirtAd) => {
     if (ad.isNeighborListing && ad.listingId) {
       const seller = neighbors.find((n) => n.userId === ad.sellerUserId);
@@ -2141,6 +2157,7 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
         onBuyFromNeighbor={handleBuyFromNeighborShop}
         onTeacherGift={handleTeacherSendGift}
         onClaimChest={handleClaimDisciplineChest}
+        onClaimBeginnerPack={handleClaimBeginnerPack}
         dailyDirtAds={dailyDirtAds}
         onBuyDailyDirtAd={handleBuyDailyDirtAd}
         onOpenChest={() => openBoardWithSfx('chest')}

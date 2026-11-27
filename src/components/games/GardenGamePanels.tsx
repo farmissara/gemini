@@ -256,6 +256,7 @@ interface GardenBoardSetProps {
   onTeacherGift: (neighbor: SchoolFarmState) => void;
   // Chest, Newspaper, Character
   onClaimChest: () => void;
+  onClaimBeginnerPack?: () => void;
   dailyDirtAds: DailyDirtAd[];
   onBuyDailyDirtAd: (ad: DailyDirtAd) => void;
   onOpenChest: () => void;
@@ -337,6 +338,7 @@ export const GardenBoardSet: React.FC<GardenBoardSetProps> = ({
   onBuyFromNeighbor,
   onTeacherGift,
   onClaimChest,
+  onClaimBeginnerPack,
   dailyDirtAds,
   onBuyDailyDirtAd,
   onOpenChest,
@@ -779,6 +781,26 @@ export const GardenBoardSet: React.FC<GardenBoardSetProps> = ({
 
         {tradeTab === 'seeds_barn' && (
           <div className="space-y-3">
+            {!farmState.claimedBeginnerPack && onClaimBeginnerPack && (
+              <div className="rounded-2xl border border-emerald-400/70 bg-gradient-to-r from-emerald-50 to-amber-50 dark:from-emerald-950/50 dark:to-amber-950/35 px-3 py-2 flex flex-wrap items-center justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="text-xs font-black text-emerald-900 dark:text-emerald-200">
+                    ชุดเสบียงฝึกหัดมือใหม่ฟรี (Starter Boost)
+                  </p>
+                  <p className="text-[11px] text-emerald-800/90 dark:text-emerald-300/90 tabular-nums">
+                    +12💧 น้ำ · +200🪙 เหรียญ · +4🌱 ปุ๋ย · +16 เมล็ดพันธุ์ · +4 ผลผลิตในคลัง
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={onClaimBeginnerPack}
+                  className="min-h-[34px] px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black inline-flex items-center gap-1 cursor-pointer shrink-0 shadow-sm"
+                >
+                  <Gift className="w-3.5 h-3.5" />
+                  <span>รับชุดฝึกหัดฟรี!</span>
+                </button>
+              </div>
+            )}
             {/* Compact Seed Shop Horizontal Strip */}
             <div className="space-y-1.5">
               <p className="text-xs font-black text-[#45270f] dark:text-amber-200">ซื้อเมล็ดพันธุ์ลงแปลง</p>
@@ -1419,6 +1441,26 @@ export const GardenBoardSet: React.FC<GardenBoardSetProps> = ({
               : 'รับเสบียงรอบล่าสุดครบแล้ว'}
           </span>
         </button>
+
+        {!farmState.claimedBeginnerPack && onClaimBeginnerPack && (
+          <div className="rounded-2xl border border-emerald-400/75 bg-emerald-50/90 dark:bg-emerald-950/40 p-3 flex flex-wrap items-center justify-between gap-2">
+            <div className="min-w-0">
+              <p className="text-xs font-black text-emerald-900 dark:text-emerald-200">
+                ของขวัญต้อนรับผู้เล่นฝึกหัดมือใหม่ 🎁
+              </p>
+              <p className="text-[11px] text-emerald-800 dark:text-emerald-300 tabular-nums">
+                +12💧 น้ำ · +200🪙 · +4🌱 ปุ๋ย · +3★ · เมล็ดข้าว-อัญชัน-ใบเตย-มะพร้าว-มะม่วง +16 ถุง
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={onClaimBeginnerPack}
+              className="min-h-[36px] px-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black cursor-pointer shrink-0 shadow"
+            >
+              รับชุดมือใหม่ฟรี
+            </button>
+          </div>
+        )}
       </GameFloatingBoard>
 
       {/* 7. DAILY DIRT GAZETTE */}

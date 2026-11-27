@@ -310,6 +310,7 @@ export interface SchoolFarmState {
   musicMuted: boolean;
   lastSpinWheelDate?: string;
   claimedAchievements?: string[];
+  claimedBeginnerPack?: boolean;
   lifeSubjectMastery?: Partial<Record<string, { solved: number; streak: number; lastDate: string }>>;
   updatedAt: string;
 }
@@ -458,7 +459,7 @@ export const CROP_CATALOG: CropDefinition[] = [
     seedCost: 34,
     sellPrice: 98,
     xpReward: 32,
-    unlockTownLevel: 2,
+    unlockTownLevel: 1,
     accentColor: '#65a30d',
     descTh: 'คั้นกะทิสดและชงลาเต้มะพร้าวใบเตย',
     descEn: 'Sweet young coconut for coconut milk & cafe lattes',
@@ -471,7 +472,7 @@ export const CROP_CATALOG: CropDefinition[] = [
     seedCost: 38,
     sellPrice: 112,
     xpReward: 36,
-    unlockTownLevel: 2,
+    unlockTownLevel: 1,
     accentColor: '#f59e0b',
     descTh: 'ผลสุกหอมหวาน จับคู่ข้าวหอมมะลิเป็นข้าวเหนียวมะม่วง',
     descEn: 'Ripe golden mango for classic Thai mango sticky rice',
@@ -745,7 +746,7 @@ export const BUILDING_CATALOG: BuildingDefinition[] = [
     category: 'production',
     coinCost: 150,
     starCost: 3,
-    unlockTownLevel: 2,
+    unlockTownLevel: 1,
     dailyCoins: 58,
     prosperityPoints: 78,
     maxLevel: 3,
@@ -1281,6 +1282,31 @@ export const createInitialFarmState = (params: {
     starterPandan.growthProgress = 1;
     starterPandan.wateredToday = false;
   }
+  // Starter jasmine rice (ready) at (4,1) & (growing, ready to water) at (4,2)
+  const starterRiceReady = tiles.find((t) => t.row === 4 && t.col === 1);
+  if (starterRiceReady) {
+    starterRiceReady.kind = 'crop';
+    starterRiceReady.tilled = true;
+    starterRiceReady.cropId = 'jasmine_rice';
+    starterRiceReady.growthProgress = 3;
+    starterRiceReady.wateredToday = true;
+  }
+  const starterRiceGrow = tiles.find((t) => t.row === 4 && t.col === 2);
+  if (starterRiceGrow) {
+    starterRiceGrow.kind = 'crop';
+    starterRiceGrow.tilled = true;
+    starterRiceGrow.cropId = 'jasmine_rice';
+    starterRiceGrow.growthProgress = 1;
+    starterRiceGrow.wateredToday = false;
+  }
+  // Starter Thai kitchen at (4,4) so beginners can craft coconut milk & mango sticky rice right away
+  const starterKitchen = tiles.find((t) => t.row === 4 && t.col === 4);
+  if (starterKitchen) {
+    starterKitchen.kind = 'building';
+    starterKitchen.buildingId = 'thai_kitchen';
+    starterKitchen.buildingLevel = 1;
+    starterKitchen.lastCollectedDate = '';
+  }
 
   return {
     version: 1,
@@ -1292,31 +1318,44 @@ export const createInitialFarmState = (params: {
     ownerRoom: params.ownerRoom,
     ownerCharacter: { ...DEFAULT_FARM_OWNER_CHARACTER },
     farmName: params.farmName || `สวนคาเฟ่ของ${params.ownerName.split(' ')[0] || 'ฉัน'}`,
-    coins: 380,
-    water: 10,
-    dailyFertilizer: 3,
+    coins: 750,
+    water: 25,
+    dailyFertilizer: 10,
     fertilizer: 2,
     goldenStreakBonusDates: [],
-    townStars: 5,
+    townStars: 10,
     farmXp: 40,
     seeds: {
-      corn: 5,
-      carrot: 3,
+      corn: 8,
+      carrot: 6,
       tomato: 2,
-      butterfly_pea: 3,
-      pandan: 3,
+      butterfly_pea: 6,
+      pandan: 6,
       strawberry: 0,
       sunflower: 0,
-      jasmine_rice: 2,
-      coconut: 0,
-      mango: 0,
+      jasmine_rice: 5,
+      coconut: 3,
+      mango: 3,
       pumpkin: 0,
       golden_melon: 0,
     },
-    barn: emptyRecord(),
+    barn: {
+      ...emptyRecord(),
+      carrot: 3,
+      tomato: 2,
+      butterfly_pea: 4,
+      pandan: 4,
+      jasmine_rice: 3,
+      coconut: 2,
+      mango: 2,
+    },
     goods: {
       ...emptyProductsRecord(),
       egg: 1,
+      coconut_milk: 2,
+      pandan_coconut_latte: 1,
+      mango_sticky_rice: 1,
+      bread: 1,
     },
     productionQueue: [],
     tiles,
@@ -1332,10 +1371,13 @@ export const createInitialFarmState = (params: {
       'farm_cottage',
       'garden_cafe',
       'herbal_pavilion',
+      'thai_kitchen',
       'lotus_fish_pond',
       'chicken_coop',
       'dairy_barn',
+      'sheep_pen',
       'juice_stand',
+      'windmill_bakery',
       'town_fountain',
       'wooden_fence',
       'cobble_path',
@@ -1441,6 +1483,7 @@ export const normalizeFarmState = (
     musicMuted: Boolean(raw.musicMuted),
     lastSpinWheelDate: typeof raw.lastSpinWheelDate === 'string' ? raw.lastSpinWheelDate : '',
     claimedAchievements: Array.isArray(raw.claimedAchievements) ? raw.claimedAchievements : [],
+    claimedBeginnerPack: Boolean(raw.claimedBeginnerPack),
     lifeSubjectMastery:
       raw.lifeSubjectMastery && typeof raw.lifeSubjectMastery === 'object'
         ? { ...raw.lifeSubjectMastery }
@@ -3443,4 +3486,43 @@ export const buyDailyDirtBargain = (
     },
   };
 };
+
+export const claimBeginnerPracticePack = (
+  state: SchoolFarmState
+): { state: SchoolFarmState; ok: boolean; errorTh?: string } => {
+  if (state.claimedBeginnerPack) {
+    return { state, ok: false, errorTh: 'คุณได้รับชุดเสบียงฝึกหัดมือใหม่ไปแล้ว' };
+  }
+  const extraBlueprints: BuildingId[] = ['thai_kitchen', 'dairy_barn', 'windmill_bakery', 'sheep_pen'];
+  const mergedBlueprints = Array.from(new Set([...(state.unlockedBlueprints || []), ...extraBlueprints]));
+
+  return {
+    ok: true,
+    state: {
+      ...state,
+      claimedBeginnerPack: true,
+      coins: state.coins + 200,
+      water: state.water + 12,
+      dailyFertilizer: state.dailyFertilizer + 4,
+      townStars: state.townStars + 3,
+      seeds: {
+        ...state.seeds,
+        corn: (state.seeds.corn || 0) + 3,
+        butterfly_pea: (state.seeds.butterfly_pea || 0) + 3,
+        pandan: (state.seeds.pandan || 0) + 3,
+        jasmine_rice: (state.seeds.jasmine_rice || 0) + 3,
+        coconut: (state.seeds.coconut || 0) + 2,
+        mango: (state.seeds.mango || 0) + 2,
+      },
+      barn: {
+        ...state.barn,
+        carrot: (state.barn.carrot || 0) + 2,
+        coconut: (state.barn.coconut || 0) + 2,
+      },
+      unlockedBlueprints: mergedBlueprints,
+      updatedAt: new Date().toISOString(),
+    },
+  };
+};
+
 

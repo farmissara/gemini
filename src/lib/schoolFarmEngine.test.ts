@@ -8,6 +8,7 @@ import {
   buyFromNeighborRoadsideShop,
   buySeedPack,
   calculateTownProsperity,
+  claimBeginnerPracticePack,
   claimDisciplineSupplies,
   claimFarmAchievement,
   clearWeedOnTile,
@@ -34,6 +35,8 @@ import {
   getNpcDailyQuotaStatus,
   harvestTile,
   helpNeighborFarm,
+  isBuildingUnlocked,
+  isCropUnlocked,
   listItemInRoadsideShop,
   normalizeFarmState,
   plantCropOnTile,
@@ -848,6 +851,49 @@ describe('schoolFarmEngine', () => {
     assert.equal(batch.collectedCount, 1);
     state = batch.state;
     assert.equal(state.goods.butterfly_pea_latte, 1);
+  });
+
+  it('provides abundant beginner starter items, Lv.1 Thai crops/kitchen, and idempotent beginner practice pack', () => {
+    const state = createInitialFarmState({
+      schoolId: 'sch-1',
+      userId: 'usr-beginner',
+      ownerName: 'น้องใหม่',
+    });
+
+    // Abundant starter supplies
+    assert.ok(state.coins >= 700);
+    assert.ok(state.water >= 20);
+    assert.ok(state.dailyFertilizer >= 8);
+    assert.ok(state.townStars >= 8);
+
+    // Pre-stocked Thai seeds, barn crops, and processed cafe/kitchen goods
+    assert.ok(state.seeds.jasmine_rice >= 5);
+    assert.ok(state.seeds.coconut >= 3);
+    assert.ok(state.seeds.mango >= 3);
+    assert.ok(state.barn.jasmine_rice >= 3);
+    assert.ok(state.barn.butterfly_pea >= 4);
+    assert.ok(state.goods.coconut_milk >= 2);
+    assert.ok(state.goods.mango_sticky_rice >= 1);
+    assert.ok(state.goods.pandan_coconut_latte >= 1);
+
+    // Beginner unlocks at Lv.1 & starter plots (thai_kitchen + jasmine_rice)
+    assert.equal(isCropUnlocked('coconut', state, 0), true);
+    assert.equal(isCropUnlocked('mango', state, 0), true);
+    assert.equal(isBuildingUnlocked('thai_kitchen', state), true);
+    assert.ok(state.tiles.some((t) => t.buildingId === 'thai_kitchen'));
+    assert.ok(state.tiles.some((t) => t.cropId === 'jasmine_rice' && (t.growthProgress || 0) >= 3));
+    assert.ok(state.tiles.some((t) => t.cropId === 'jasmine_rice' && (t.growthProgress || 0) < 3));
+
+    // One-time Beginner Practice Pack top-up works once and prevents duplicates
+    const packed = claimBeginnerPracticePack(state);
+    assert.equal(packed.ok, true);
+    assert.equal(packed.state.claimedBeginnerPack, true);
+    assert.equal(packed.state.water, state.water + 12);
+    assert.equal(packed.state.coins, state.coins + 200);
+    assert.equal(packed.state.seeds.coconut, state.seeds.coconut + 2);
+
+    const dupPack = claimBeginnerPracticePack(packed.state);
+    assert.equal(dupPack.ok, false);
   });
 });
 
