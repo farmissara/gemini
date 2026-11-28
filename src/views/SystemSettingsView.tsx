@@ -44,6 +44,7 @@ import {
   CheckSquare,
   Square,
   X,
+  Gamepad2,
 } from 'lucide-react';
 import { FutureNavIcon } from '../components/common/FutureIcon';
 import { PageHeader } from '../components/common/PageShell';
@@ -68,6 +69,7 @@ import { SchoolGpsSettingsCard } from '../components/SchoolGpsSettingsCard';
 import { SchoolStudentLoginSettingsCard } from '../components/SchoolStudentLoginSettingsCard';
 import { SchoolPermissionSettingsView } from './SchoolPermissionSettingsView';
 import { SchoolPackagesAndAiPanel } from '../components/admin/SchoolPackagesAndAiPanel';
+import { GameControlsPanel } from '../components/admin/GameControlsPanel';
 import { AcademicTermRolloverPanel } from '../components/admin/AcademicTermRolloverPanel';
 import {
   buildInitialStudentPassword,
@@ -78,7 +80,12 @@ import {
 import { uploadSchoolLogo } from '../lib/supabase';
 import { DEFAULT_SEMESTER_OPTIONS, DEFAULT_STAFF_POSITION_OPTIONS } from '../lib/schoolSettings';
 import { appendAuditLog, getAuditLogs } from '../lib/auditLog';
-import { getSchoolFeatureFlags, saveSchoolFeatureFlags } from '../lib/schoolFeatureFlags';
+import {
+  GAME_CONTROL_CATALOG,
+  countEnabledGames,
+  getSchoolFeatureFlags,
+  saveSchoolFeatureFlags,
+} from '../lib/schoolFeatureFlags';
 import { normalizeSelfieRetentionMinutes } from '../lib/selfieCleanupLogic';
 import { getSchoolRolePolicies, saveSchoolRolePolicies, type SchoolPolicyId } from '../lib/schoolPermissions';
 import { useSchoolCustomPresets } from '../lib/schoolCustomPresets';
@@ -93,6 +100,7 @@ export type SystemSettingsTab =
   | 'school_general'
   | 'school_gps'
   | 'school_permissions'
+  | 'game_controls'
   | 'student_accounts'
   | 'student_login_config'
   | 'saas_audit';
@@ -812,6 +820,7 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
       items: [
         { id: 'control_overview', label: lang === 'th' ? 'ภาพรวมระบบ' : 'Overview', icon: LayoutGrid },
         { id: 'school_permissions', label: lang === 'th' ? 'สิทธิ์บทบาท' : 'Permissions', icon: Shield, adminOnly: true },
+        { id: 'game_controls', label: lang === 'th' ? 'เปิด-ปิดเกมส์' : 'Game Controls', icon: Gamepad2, adminOnly: true },
         { id: 'saas_audit', label: lang === 'th' ? 'แพ็กเกจ AI & Audit Log' : 'Packages & Audit', icon: Sliders, adminOnly: true },
       ],
     },
@@ -1083,6 +1092,16 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
             detail: `บันทึก Audit Log ที่จัดเก็บ ${getAuditLogs(activeSchool.id).length} รายการ · ตรวจสอบการแก้เกรด สลิป และตั้งค่า`,
             icon: Sliders,
             actionLabel: 'เปิด AI & Audit Log',
+          },
+          {
+            id: 'game_controls',
+            category: 'เกม & เมืองจำลอง',
+            title: 'เปิด-ปิดเกมส์การเรียนรู้รายเกม',
+            statusLabel: `${countEnabledGames(localFlags, currentRole)}/${GAME_CONTROL_CATALOG.length} เกมเปิดอยู่`,
+            ready: countEnabledGames(localFlags, currentRole) > 0,
+            detail: 'ควบคุมเปิด/ปิดเมืองจำลองชีวิต เกม Arcade 3D บอสเรด และห้องแล็บแยกทีละเกมทันที',
+            icon: Gamepad2,
+            actionLabel: 'จัดการเปิด-ปิดเกมส์',
           },
         ];
 
@@ -2830,6 +2849,23 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
               onUpdateSchool={onUpdateSchool}
             />
           </div>
+        )}
+
+      {/* TAB 8.5: Per-Game Enable/Disable Controls */}
+      {activeTab === 'game_controls' &&
+        ['admin', 'super_admin'].includes(currentRole) && (
+          <GameControlsPanel
+            activeSchool={activeSchool}
+            currentRole={currentRole}
+            currentUser={currentUser}
+            lang={lang}
+            flags={localFlags}
+            onUpdateFlags={(next) => {
+              setLocalFlags(next);
+              onUpdateFeatureFlags?.(next);
+            }}
+            onOpenPackagesTab={() => setActiveTab('saas_audit')}
+          />
         )}
 
       {/* TAB 9: SaaS Leveled Packages, AI Access Control & Audit Log */}

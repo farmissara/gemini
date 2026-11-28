@@ -5,6 +5,7 @@ import {
   cachePackageCatalog,
   getSchoolFeatureFlags,
   getStoredPackageCatalog,
+  normalizeGameControls,
   normalizeSchoolTier,
   saveSchoolFeatureFlags,
 } from './schoolFeatureFlags';
@@ -184,6 +185,7 @@ export async function loadSchoolFeatureFlagsFromDb(
         rawFlags.selfieRetentionAfterCheckoutMinutes !== undefined
           ? normalizeSelfieRetentionMinutes(rawFlags.selfieRetentionAfterCheckoutMinutes)
           : basePreset.selfieRetentionAfterCheckoutMinutes,
+      gameControls: normalizeGameControls(rawFlags.gameControls),
     };
 
     saveSchoolFeatureFlags(schoolId, merged);
@@ -205,6 +207,7 @@ export async function saveSchoolFeatureFlagsToDb(
     selfieRetentionAfterCheckoutMinutes: normalizeSelfieRetentionMinutes(
       flags.selfieRetentionAfterCheckoutMinutes
     ),
+    gameControls: normalizeGameControls(flags.gameControls),
   };
   saveSchoolFeatureFlags(schoolId, normalized);
 

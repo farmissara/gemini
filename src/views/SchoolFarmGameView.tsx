@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowLeft,
   ArrowUpCircle,
+  Building2,
   ChefHat,
   Grid2X2Plus,
   HelpCircle,
@@ -154,6 +155,13 @@ import {
   type LifeChallengeScenario,
   type LifeSubjectId,
 } from '../lib/farmLifeSubjects';
+import { LifeCitySimulationView } from '../components/games/LifeCitySimulationView';
+import {
+  loadLifeCityState,
+  saveLifeCityState,
+  type CityActionResult,
+  type LifeCityState,
+} from '../lib/lifeCityEngine';
 
 interface SchoolFarmGameViewProps {
   lang: AppLanguage;
@@ -353,6 +361,8 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
   });
 
   const [nowMs, setNowMs] = useState(() => Date.now());
+  const [worldMode, setWorldMode] = useState<'farm' | 'city'>('farm');
+  const [cityState, setCityState] = useState<LifeCityState>(() => loadLifeCityState(schoolId, userId, students));
   const [isFullscreen, setIsFullscreen] = useState(true);
   const [isPortraitMobile, setIsPortraitMobile] = useState(false);
   const [dismissedPortraitHint, setDismissedPortraitHint] = useState(false);
@@ -478,12 +488,51 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
         ownerRoom,
       });
       setFarmState(resetDailyWaterFlagsIfNeeded(normalized, getTodayBangkokDate()));
+      setCityState(loadLifeCityState(schoolId, userId, students));
       setNeighborSyncTick((t) => t + 1);
     };
     hydrateFromStore();
     window.addEventListener(CAMPUS_DATA_UPDATED_EVENT, hydrateFromStore);
     return () => window.removeEventListener(CAMPUS_DATA_UPDATED_EVENT, hydrateFromStore);
-  }, [schoolId, userId, matchedStudent?.id, currentUser?.studentRecordId, ownerName, ownerRoom]);
+  }, [schoolId, userId, matchedStudent?.id, currentUser?.studentRecordId, ownerName, ownerRoom, students]);
+
+  const handleApplyCityResult = (result: CityActionResult) => {
+    setCityState(result.state);
+    saveLifeCityState(schoolId, userId, result.state);
+
+    const hasFarmSync =
+      result.coinDelta !== 0 ||
+      Boolean(result.xpGain) ||
+      Boolean(result.barnDelta) ||
+      Boolean(result.goodsDelta);
+
+    if (hasFarmSync) {
+      const nextBarn = { ...farmState.barn };
+      if (result.barnDelta) {
+        (Object.entries(result.barnDelta) as Array<[CropId, number]>).forEach(([k, delta]) => {
+          nextBarn[k] = Math.max(0, (nextBarn[k] || 0) + delta);
+        });
+      }
+      const nextGoods = { ...farmState.goods };
+      if (result.goodsDelta) {
+        (Object.entries(result.goodsDelta) as Array<[ProductId, number]>).forEach(([k, delta]) => {
+          nextGoods[k] = Math.max(0, (nextGoods[k] || 0) + delta);
+        });
+      }
+      persistFarm({
+        ...farmState,
+        coins: Math.max(0, farmState.coins + result.coinDelta),
+        farmXp: farmState.farmXp + (result.xpGain || 0),
+        barn: nextBarn,
+        goods: nextGoods,
+        updatedAt: new Date().toISOString(),
+      });
+    }
+
+    if (onEarnRewards && currentUser?.id && ((result.xpGain || 0) > 0 || (result.gemGain || 0) > 0)) {
+      onEarnRewards(currentUser.id, result.xpGain || 0, result.gemGain || 0, true);
+    }
+  };
 
   const persistFarm = (nextState: SchoolFarmState) => {
     const prevLv = getTownLevelFromXp(farmState.farmXp).level;
@@ -1517,6 +1566,19 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
       }}
       className={wrapperClass}
     >
+      {worldMode === 'city' ? (
+        <LifeCitySimulationView
+          lang={lang}
+          farmState={farmState}
+          cityState={cityState}
+          playerGems={playerGems}
+          students={students}
+          onApplyCityResult={handleApplyCityResult}
+          onSwitchToFarm={() => setWorldMode('farm')}
+          onExitGame={onExit}
+        />
+      ) : (
+        <>
       {/* FULL-CANVAS THAI INTEGRATED GARDEN & CAFE WORLD */}
       <IsometricFarmBoard
         tiles={farmState.tiles}
@@ -1622,6 +1684,19 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
             </span>
           </button>
         </div>
+
+        <button
+          type="button"
+          onClick={() => {
+            farmAudio.playSfx('open');
+            setOpenMenu('none');
+            setWorldMode('city');
+          }}
+          className="h-9 px-3 rounded-full bg-indigo-600/95 hover:bg-indigo-500 border border-indigo-300/60 text-white text-xs font-bold shadow-lg inline-flex items-center gap-1.5 cursor-pointer whitespace-nowrap shrink-0 transition"
+        >
+          <Building2 className="w-3.5 h-3.5" />
+          <span>เมืองจำลอง</span>
+        </button>
       </div>
 
       {/* TOP-RIGHT COMPACT CURRENCY & SETTINGS (TAP TO REVEAL SUPPLIES / AUDIO) */}
@@ -2396,6 +2471,18 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
             <div className="space-y-1 max-h-[60dvh] overflow-y-auto no-scrollbar">
               {[
                 {
+                  id: 'life_city' as const,
+                  icon: <Building2 className="w-5 h-5 text-indigo-700" />,
+                  title: 'เข้าชมเมืองจำลองชุมชน (ครบทุกสถานที่)',
+                  desc: 'เยี่ยมสวนเพื่อน ร้านค้า บริษัท ตลาด ธนาคาร(กู้ยืม) โรงพยาบาล(เจ็บป่วย) ตำรวจ วัด และเลือกอาชีพ',
+                  badge: cityState.illness !== 'none' || cityState.wantedLevel > 0 ? 1 : undefined,
+                  onClick: () => {
+                    farmAudio.playSfx('open');
+                    setOpenMenu('none');
+                    setWorldMode('city');
+                  },
+                },
+                {
                   id: 'careers' as const,
                   icon: <GardenCareerIcon className="w-6 h-6" />,
                   title: 'สายอาชีพ & ทุนสร้างกิจการ',
@@ -2736,6 +2823,8 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
           setChallengePicked(null);
         }}
       />
+        </>
+      )}
     </div>
   );
 };

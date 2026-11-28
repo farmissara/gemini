@@ -47,7 +47,8 @@ import {
   Compass,
   X,
 } from 'lucide-react';
-import { QuizQuestion, PlayerScore, RewardItem, RewardRedemptionRequest, AuthUser, AppLanguage } from '../types';
+import { QuizQuestion, PlayerScore, RewardItem, RewardRedemptionRequest, AuthUser, AppLanguage, SchoolFeatureFlags, GameControlId } from '../types';
+import { isGameEnabledByFeatureFlags } from '../lib/schoolFeatureFlags';
 import { BaseModal } from '../components/common/BaseModal';
 import { COMPREHENSIVE_QUESTION_BANK } from '../data/examQuestionBanks';
 import { EduBattleRoyale3DView } from './EduBattleRoyale3DView';
@@ -97,6 +98,7 @@ interface EduBattleGameViewProps {
   lang: AppLanguage;
   initialSubTab?: EduGameSubTab;
   isMobileMode?: boolean;
+  featureFlags?: SchoolFeatureFlags;
   onGamePlayingChange?: (isPlaying: boolean) => void;
   onAddQuestion: (q: QuizQuestion) => void;
   onImportQuestions: (imported: QuizQuestion[]) => void;
@@ -110,6 +112,17 @@ interface EduBattleGameViewProps {
   onExit?: () => void;
 }
 
+const SUBTAB_TO_GAME_CONTROL: Partial<Record<EduGameSubTab, GameControlId>> = {
+  live_room: 'live_room',
+  meteor_blaster: 'meteor_blaster',
+  concept_match: 'concept_match',
+  word_builder: 'word_builder',
+  chrono_sort: 'chrono_sort',
+  arena: 'arena_1v1',
+  battle_royale_3d: 'battle_royale_3d',
+  subject_labs: 'subject_labs',
+};
+
 export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
   questions,
   playerScores,
@@ -119,6 +132,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
   lang,
   initialSubTab,
   isMobileMode = false,
+  featureFlags,
   onAddQuestion,
   onImportQuestions,
   onEarnRewards,
@@ -152,9 +166,23 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
 
   useEffect(() => {
     if (initialSubTab) {
-      setActiveSubTab(initialSubTab);
+      const mappedId = SUBTAB_TO_GAME_CONTROL[initialSubTab];
+      if (!mappedId || isGameEnabledByFeatureFlags(mappedId, featureFlags, currentUser?.role)) {
+        setActiveSubTab(initialSubTab);
+      } else {
+        setActiveSubTab('hub');
+      }
     }
-  }, [initialSubTab]);
+  }, [initialSubTab, featureFlags, currentUser?.role]);
+
+  useEffect(() => {
+    const mappedId = SUBTAB_TO_GAME_CONTROL[activeSubTab];
+    if (mappedId && !isGameEnabledByFeatureFlags(mappedId, featureFlags, currentUser?.role)) {
+      setBattleState('idle');
+      setIs3DBattlePlaying(false);
+      setActiveSubTab('hub');
+    }
+  }, [activeSubTab, featureFlags, currentUser?.role]);
 
   const handleBackFromGame = () => {
     setIs3DBattlePlaying(false);
@@ -694,10 +722,17 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
     },
   ];
 
+  const enabledArcadeGameCards = ARCADE_GAME_CARDS.filter((card) => {
+    const controlId = SUBTAB_TO_GAME_CONTROL[card.id];
+    return !controlId || isGameEnabledByFeatureFlags(controlId, featureFlags, currentUser?.role);
+  });
+
+  const isLiveRoomEnabled = isGameEnabledByFeatureFlags('live_room', featureFlags, currentUser?.role);
+
   const visibleGameCards =
     hubCategory === 'all'
-      ? ARCADE_GAME_CARDS
-      : ARCADE_GAME_CARDS.filter((c) => c.category === hubCategory);
+      ? enabledArcadeGameCards
+      : enabledArcadeGameCards.filter((c) => c.category === hubCategory);
 
   const missionTargetTabMap: Record<DailyArcadeMission['id'], EduGameSubTab> = {
     meteor: 'meteor_blaster',
@@ -929,15 +964,22 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                           >
                             รับรางวัล
                           </button>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => setActiveSubTab(missionTargetTabMap[mission.id])}
-                            className="text-[11px] font-semibold text-cyan-400 hover:text-cyan-300 cursor-pointer"
-                          >
-                            เล่นเลย
-                          </button>
-                        )}
+                        ) : (() => {
+                          const targetTab = missionTargetTabMap[mission.id];
+                          const targetControl = SUBTAB_TO_GAME_CONTROL[targetTab];
+                          const targetEnabled = !targetControl || isGameEnabledByFeatureFlags(targetControl, featureFlags, currentUser?.role);
+                          return targetEnabled ? (
+                            <button
+                              type="button"
+                              onClick={() => setActiveSubTab(targetTab)}
+                              className="text-[11px] font-semibold text-cyan-400 hover:text-cyan-300 cursor-pointer"
+                            >
+                              เล่นเลย
+                            </button>
+                          ) : (
+                            <span className="text-[11px] font-medium text-slate-500">ปิดชั่วคราว</span>
+                          );
+                        })()}
                       </div>
                     </div>
                   );
@@ -946,6 +988,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
             )}
 
             {/* Featured Real-Time 6-Digit PIN Classroom Arena Banner */}
+            {isLiveRoomEnabled && (
             <button
               type="button"
               onClick={() => {
@@ -977,6 +1020,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                 <ChevronRight className="w-4 h-4" />
               </span>
             </button>
+            )}
 
             {onOpenCareerQuest && (
               <button
@@ -1015,7 +1059,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
             {/* Category Filter Row */}
             <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
               {([
-                { id: 'all', label: 'ทั้งหมด (7)' },
+                { id: 'all', label: `ทั้งหมด (${enabledArcadeGameCards.length})` },
                 { id: 'arcade', label: 'Arcade ไวๆ' },
                 { id: 'battle', label: 'ดวล & 3D' },
                 { id: 'lab', label: 'แล็บจำลอง' },
@@ -1079,6 +1123,21 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                 );
               })}
             </div>
+
+            {visibleGameCards.length === 0 && (
+              <div className="rounded-2xl border border-white/[0.08] bg-slate-900/65 p-6 text-center space-y-1.5">
+                <p className="text-sm font-bold text-slate-200">
+                  {enabledArcadeGameCards.length === 0
+                    ? 'เกมในหมวดนี้ถูกปิดการใช้งานชั่วคราวโดยผู้ดูแลโรงเรียน'
+                    : 'ไม่พบเกมในหมวดหมู่นี้ที่เปิดใช้งานอยู่'}
+                </p>
+                <p className="text-xs text-slate-400">
+                  {enabledArcadeGameCards.length === 0
+                    ? 'หากคุณเป็นผู้ดูแลระบบ สามารถเปิดใช้งานเกมได้ที่ ตั้งค่าระบบ → เปิด-ปิดเกมส์'
+                    : 'ลองเลือกหมวดหมู่อื่นเพื่อเข้าเล่นเกมที่เปิดให้บริการ'}
+                </p>
+              </div>
+            )}
           </div>
         </div>
       )}

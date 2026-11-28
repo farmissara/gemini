@@ -244,7 +244,16 @@ export const SchoolPackagesAndAiPanel: React.FC<SchoolPackagesAndAiPanelProps> =
   };
 
   const handleApplyLevelImmediately = async (pkg: PackageLevelConfig) => {
-    const next = buildFlagsFromLevel(pkg.id, catalog, flags.allowStudentsAi);
+    const next: SchoolFeatureFlags = {
+      ...buildFlagsFromLevel(
+        pkg.id,
+        catalog,
+        flags.allowStudentsAi,
+        flags.autoDeleteSelfiesAfterCheckout,
+        flags.selfieRetentionAfterCheckoutMinutes
+      ),
+      gameControls: flags.gameControls,
+    };
     await persistFlags(next, `ปรับแพ็กเกจโรงเรียนเป็น ${pkg.nameTh} เรียบร้อยแล้ว`);
   };
 

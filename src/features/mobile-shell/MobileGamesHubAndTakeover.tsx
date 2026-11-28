@@ -31,9 +31,11 @@ import type {
   RewardItem,
   RewardRedemptionRequest,
   School,
+  SchoolFeatureFlags,
   Student,
   UserRole,
 } from '../../types';
+import { isGameEnabledByFeatureFlags } from '../../lib/schoolFeatureFlags';
 import arcadeBannerImg from '../../assets/images/student_arcade_banner_1794996857506.jpg';
 import type { NavTab } from '../../components/layout/Sidebar';
 import { ViewErrorBoundary } from '../../components/common/ViewErrorBoundary';
@@ -51,6 +53,7 @@ interface MobileGamesHubTabProps {
   currentScore: PlayerScore;
   playerScoresCount: number;
   canOpenCareerQuest: boolean;
+  featureFlags?: SchoolFeatureFlags;
   isModuleEnabled: (tab: NavTab) => boolean;
   openArcadeSubTab: (tab: EduGameSubTab) => void;
   setActiveGameView: (view: ActiveGameView) => void;
@@ -63,6 +66,7 @@ export const MobileGamesHubTab: React.FC<MobileGamesHubTabProps> = ({
   currentScore,
   playerScoresCount,
   canOpenCareerQuest,
+  featureFlags,
   isModuleEnabled,
   openArcadeSubTab,
   setActiveGameView,
@@ -92,7 +96,7 @@ export const MobileGamesHubTab: React.FC<MobileGamesHubTabProps> = ({
         iconBg: 'bg-cyan-500/15',
         iconText: 'text-cyan-400',
         icon: Rocket,
-        enabled: isModuleEnabled('games'),
+        enabled: isModuleEnabled('games') && isGameEnabledByFeatureFlags('meteor_blaster', featureFlags, currentRole),
         onLaunch: () => openArcadeSubTab('meteor_blaster'),
       },
       {
@@ -104,7 +108,7 @@ export const MobileGamesHubTab: React.FC<MobileGamesHubTabProps> = ({
         iconBg: 'bg-violet-500/15',
         iconText: 'text-violet-400',
         icon: Grid2x2,
-        enabled: isModuleEnabled('games'),
+        enabled: isModuleEnabled('games') && isGameEnabledByFeatureFlags('concept_match', featureFlags, currentRole),
         onLaunch: () => openArcadeSubTab('concept_match'),
       },
       {
@@ -116,7 +120,7 @@ export const MobileGamesHubTab: React.FC<MobileGamesHubTabProps> = ({
         iconBg: 'bg-amber-500/15',
         iconText: 'text-amber-400',
         icon: SpellCheck2,
-        enabled: isModuleEnabled('games'),
+        enabled: isModuleEnabled('games') && isGameEnabledByFeatureFlags('word_builder', featureFlags, currentRole),
         onLaunch: () => openArcadeSubTab('word_builder'),
       },
       {
@@ -128,7 +132,7 @@ export const MobileGamesHubTab: React.FC<MobileGamesHubTabProps> = ({
         iconBg: 'bg-emerald-500/15',
         iconText: 'text-emerald-400',
         icon: GitBranch,
-        enabled: isModuleEnabled('games'),
+        enabled: isModuleEnabled('games') && isGameEnabledByFeatureFlags('chrono_sort', featureFlags, currentRole),
         onLaunch: () => openArcadeSubTab('chrono_sort'),
       },
       {
@@ -140,7 +144,7 @@ export const MobileGamesHubTab: React.FC<MobileGamesHubTabProps> = ({
         iconBg: 'bg-rose-500/15',
         iconText: 'text-rose-400',
         icon: Swords,
-        enabled: isModuleEnabled('games'),
+        enabled: isModuleEnabled('games') && isGameEnabledByFeatureFlags('arena_1v1', featureFlags, currentRole),
         onLaunch: () => openArcadeSubTab('arena'),
       },
       {
@@ -152,7 +156,7 @@ export const MobileGamesHubTab: React.FC<MobileGamesHubTabProps> = ({
         iconBg: 'bg-indigo-500/15',
         iconText: 'text-indigo-400',
         icon: Gamepad2,
-        enabled: isModuleEnabled('games'),
+        enabled: isModuleEnabled('games') && isGameEnabledByFeatureFlags('battle_royale_3d', featureFlags, currentRole),
         onLaunch: () => setActiveGameView('battle_royale_3d'),
       },
       {
@@ -164,7 +168,7 @@ export const MobileGamesHubTab: React.FC<MobileGamesHubTabProps> = ({
         iconBg: 'bg-orange-500/15',
         iconText: 'text-orange-400',
         icon: Flame,
-        enabled: isModuleEnabled('boss_raid'),
+        enabled: isModuleEnabled('boss_raid') && isGameEnabledByFeatureFlags('boss_raid', featureFlags, currentRole),
         onLaunch: () => setActiveGameView('boss_raid'),
       },
       {
@@ -176,7 +180,7 @@ export const MobileGamesHubTab: React.FC<MobileGamesHubTabProps> = ({
         iconBg: 'bg-sky-500/15',
         iconText: 'text-sky-400',
         icon: FlaskConical,
-        enabled: isModuleEnabled('subject_labs'),
+        enabled: isModuleEnabled('subject_labs') && isGameEnabledByFeatureFlags('subject_labs', featureFlags, currentRole),
         onLaunch: () => setActiveGameView('subject_labs'),
       },
     ]
@@ -258,7 +262,7 @@ export const MobileGamesHubTab: React.FC<MobileGamesHubTabProps> = ({
       )}
 
       {/* Featured 1-Tap Live Classroom 6-Digit PIN Card */}
-      {isModuleEnabled('games') && (
+      {isModuleEnabled('games') && isGameEnabledByFeatureFlags('live_room', featureFlags, currentRole) && (
         <button
           type="button"
           onClick={() => openArcadeSubTab('live_room')}
@@ -432,6 +436,7 @@ interface MobileFullscreenGameOverlayProps {
   currentRole: UserRole;
   currentUser: AuthUser | null;
   activeSchool: School;
+  featureFlags?: SchoolFeatureFlags;
   linkedStudents: Student[];
   students?: Student[];
   attendance?: AttendanceRecord[];
@@ -462,6 +467,7 @@ export const MobileFullscreenGameOverlay: React.FC<MobileFullscreenGameOverlayPr
   currentRole,
   currentUser,
   activeSchool,
+  featureFlags,
   linkedStudents,
   students = [],
   attendance = [],
@@ -538,6 +544,7 @@ export const MobileFullscreenGameOverlay: React.FC<MobileFullscreenGameOverlayPr
               lang={lang}
               initialSubTab={arcadeInitialSubTab}
               isMobileMode={true}
+              featureFlags={featureFlags}
               onAddQuestion={onAddQuestion}
               onImportQuestions={onImportQuestions}
               onEarnRewards={onEarnRewards}
@@ -561,6 +568,7 @@ export const MobileFullscreenGameOverlay: React.FC<MobileFullscreenGameOverlayPr
               lang={lang}
               initialSubTab="arena"
               isMobileMode={true}
+              featureFlags={featureFlags}
               onAddQuestion={onAddQuestion}
               onImportQuestions={onImportQuestions}
               onEarnRewards={onEarnRewards}

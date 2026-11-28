@@ -735,6 +735,7 @@ export const SchoolErpViewSwitch: React.FC<SchoolErpViewSwitchProps> = (props) =
                   lang={lang}
                   initialSubTab={eduBattleInitialSubTab}
                   isMobileMode={shouldShowMobileView}
+                  featureFlags={activeFeatureFlags}
                   onAddQuestion={props.onAddQuestion}
                   onImportQuestions={props.onImportQuestions}
                   onEarnRewards={props.onEarnRewards}

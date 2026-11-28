@@ -1,5 +1,6 @@
 import type {
   AppProgramMode,
+  GameControlId,
   PackageFeatureCategoryId,
   PackageLevelConfig,
   PackageLevelId,
@@ -43,6 +44,168 @@ export const AI_FEATURE_FLAG_KEYS: SchoolFeatureFlagKey[] = [
   'realworld_quests',
   'career_quest',
 ];
+
+export type GameControlCategoryId = 'city_life' | 'arcade' | 'battle' | 'lab_growth';
+
+export interface GameControlDescriptor {
+  id: GameControlId;
+  parentFlag: SchoolFeatureFlagKey;
+  category: GameControlCategoryId;
+  labelTh: string;
+  labelEn: string;
+  descTh: string;
+  descEn: string;
+  tabId?: string;
+  subTabId?: string;
+}
+
+export const GAME_CONTROL_CATEGORY_META: Array<{
+  id: GameControlCategoryId;
+  labelTh: string;
+  labelEn: string;
+}> = [
+  { id: 'city_life', labelTh: 'เมืองจำลอง & ฟาร์มอาชีพ', labelEn: 'City Life & Farm' },
+  { id: 'arcade', labelTh: 'Arcade ฝึกสมอง', labelEn: 'Brain Arcade' },
+  { id: 'battle', labelTh: 'แข่งขัน & ดวลสด', labelEn: 'Battles & Co-op' },
+  { id: 'lab_growth', labelTh: 'แล็บจำลอง & ความก้าวหน้า', labelEn: 'Labs & Milestones' },
+];
+
+export const GAME_CONTROL_CATALOG: GameControlDescriptor[] = [
+  {
+    id: 'school_farm',
+    parentFlag: 'school_farm',
+    category: 'city_life',
+    labelTh: 'เมืองจำลองชุมชน & ฟาร์มอาชีพ',
+    labelEn: 'Life City Sim & Career Farm',
+    descTh: 'เดินชมเมือง ร้านค้า บริษัท ตลาด ธนาคาร โรงพยาบาล สถานีตำรวจ วัด และเลือกอาชีพ',
+    descEn: 'Interactive town simulation with shops, companies, market, bank, hospital, police & temple',
+    tabId: 'school_farm',
+  },
+  {
+    id: 'meteor_blaster',
+    parentFlag: 'games_3d',
+    category: 'arcade',
+    labelTh: 'Meteor Math Blaster',
+    labelEn: 'Meteor Math Blaster',
+    descTh: 'ยิงอุกกาบาตสมการคณิตและสูตรฟิสิกส์กลางอวกาศ',
+    descEn: 'Space equation shooter for math and physics',
+    subTabId: 'meteor_blaster',
+  },
+  {
+    id: 'concept_match',
+    parentFlag: 'games_3d',
+    category: 'arcade',
+    labelTh: 'Match & Memory Blitz',
+    labelEn: 'Match & Memory Blitz',
+    descTh: 'จับคู่ความรู้ความเร็วสูงและพลิกการ์ดความจำ 8 กลุ่มสาระ',
+    descEn: 'High-speed concept matching and memory cards',
+    subTabId: 'concept_match',
+  },
+  {
+    id: 'word_builder',
+    parentFlag: 'games_3d',
+    category: 'arcade',
+    labelTh: 'Word Builder Puzzle',
+    labelEn: 'Word Builder Puzzle',
+    descTh: 'ต่อคำศัพท์สองภาษาจากคำใบ้และสะสมสตรีค',
+    descEn: 'Bilingual vocabulary tile puzzle',
+    subTabId: 'word_builder',
+  },
+  {
+    id: 'chrono_sort',
+    parentFlag: 'games_3d',
+    category: 'arcade',
+    labelTh: 'ChronoSort Rush',
+    labelEn: 'ChronoSort Rush',
+    descTh: 'แยกหมวดสายพานด่วนและเรียงลำดับไทม์ไลน์-อัลกอริทึม',
+    descEn: 'Conveyor classification and timeline sorting',
+    subTabId: 'chrono_sort',
+  },
+  {
+    id: 'arena_1v1',
+    parentFlag: 'games_3d',
+    category: 'battle',
+    labelTh: '1v1 Speed Duel',
+    labelEn: '1v1 Speed Duel',
+    descTh: 'ดวลตอบคำถามจับเวลา 15 วินาที พร้อมตัวช่วย 50/50 และโล่',
+    descEn: 'Timed 1v1 quiz battle with lifelines',
+    subTabId: 'arena',
+  },
+  {
+    id: 'battle_royale_3d',
+    parentFlag: 'games_3d',
+    category: 'battle',
+    labelTh: '3D Battle Royale',
+    labelEn: '3D Battle Royale',
+    descTh: 'วิ่งสำรวจเกาะ 3 มิติ ล่าหีบความรู้และแอร์ดรอปคูณคะแนน',
+    descEn: '3D island treasure & knowledge battle',
+    subTabId: 'battle_royale_3d',
+  },
+  {
+    id: 'live_room',
+    parentFlag: 'games_3d',
+    category: 'battle',
+    labelTh: 'ห้องแข่งสด 6-Digit PIN (Live Arena)',
+    labelEn: 'Live Classroom Arena (6-Digit PIN)',
+    descTh: 'เปิดห้องสร้างรหัส PIN 6 หลักแข่งตอบสดพร้อมกันทั้งห้อง',
+    descEn: 'Real-time classroom quiz race with 6-digit PIN',
+    subTabId: 'live_room',
+  },
+  {
+    id: 'boss_raid',
+    parentFlag: 'boss_raid',
+    category: 'battle',
+    labelTh: 'Co-op Boss Raid',
+    labelEn: 'Co-op Boss Raid',
+    descTh: 'ภารกิจร่วมมือปาร์ตี้ห้องเรียนพิชิตบอสตอบปัญหา',
+    descEn: 'Collaborative classroom boss battle',
+    tabId: 'boss_raid',
+  },
+  {
+    id: 'subject_labs',
+    parentFlag: 'subject_labs',
+    category: 'lab_growth',
+    labelTh: 'Interactive Subject Labs',
+    labelEn: 'Interactive Subject Labs',
+    descTh: 'ห้องแล็บจำลองทดลองเคมี ฟิสิกส์ โค้ด และภาษา',
+    descEn: 'Interactive science, coding & language simulations',
+    tabId: 'subject_labs',
+    subTabId: 'subject_labs',
+  },
+  {
+    id: 'study_streak',
+    parentFlag: 'study_streak',
+    category: 'lab_growth',
+    labelTh: 'Study Streak & ภารกิจการเรียน',
+    labelEn: 'Study Streak Pass',
+    descTh: 'สะสมวินัยการเรียนต่อเนื่อง EXP และรางวัลประจำวัน',
+    descEn: 'Daily learning discipline & streak pass',
+    tabId: 'study_streak',
+  },
+  {
+    id: 'hall_of_fame',
+    parentFlag: 'hall_of_fame',
+    category: 'lab_growth',
+    labelTh: 'หอเกียรติยศ 3D (Hall of Fame)',
+    labelEn: '3D Hall of Fame',
+    descTh: 'จัดแสดงผลงานดีเด่นและเกียรติบัตรนักเรียนแบบ 3 มิติ',
+    descEn: '3D showcase of student awards and certificates',
+    tabId: 'hall_of_fame',
+  },
+];
+
+export const normalizeGameControls = (
+  raw?: Partial<Record<GameControlId, boolean>> | null
+): Partial<Record<GameControlId, boolean>> => {
+  if (!raw || typeof raw !== 'object') return {};
+  const result: Partial<Record<GameControlId, boolean>> = {};
+  for (const item of GAME_CONTROL_CATALOG) {
+    if (typeof raw[item.id] === 'boolean') {
+      result[item.id] = raw[item.id];
+    }
+  }
+  return result;
+};
 
 export const FEATURE_FLAG_LABELS: FeatureFlagDescriptor[] = [
   // Category 1: Core Academics & SIS (Level 1)
@@ -537,6 +700,7 @@ export const getSchoolFeatureFlags = (
         parsed.selfieRetentionAfterCheckoutMinutes !== undefined
           ? normalizeSelfieRetentionMinutes(parsed.selfieRetentionAfterCheckoutMinutes)
           : tierPreset.selfieRetentionAfterCheckoutMinutes,
+      gameControls: normalizeGameControls(parsed.gameControls),
     };
   } catch {
     return baseDefault;
@@ -553,6 +717,7 @@ export const saveSchoolFeatureFlags = (schoolId: string, flags: SchoolFeatureFla
       selfieRetentionAfterCheckoutMinutes: normalizeSelfieRetentionMinutes(
         flags.selfieRetentionAfterCheckoutMinutes
       ),
+      gameControls: normalizeGameControls(flags.gameControls),
     };
     window.localStorage.setItem(`${FEATURE_FLAGS_PREFIX}${schoolId}`, JSON.stringify(normalized));
   } catch {
@@ -586,6 +751,57 @@ const PROTECTED_SYSTEM_TABS = new Set<string>([
   'report_insights',
 ]);
 
+const EDU_BATTLE_HUB_GAME_IDS: GameControlId[] = [
+  'meteor_blaster',
+  'concept_match',
+  'word_builder',
+  'chrono_sort',
+  'arena_1v1',
+  'battle_royale_3d',
+  'live_room',
+  'subject_labs',
+];
+
+export const isGameEnabledByFeatureFlags = (
+  gameId: GameControlId,
+  flags?: SchoolFeatureFlags,
+  _userRole?: UserRole
+): boolean => {
+  if (!flags) return true;
+  const descriptor = GAME_CONTROL_CATALOG.find((item) => item.id === gameId);
+  if (!descriptor) return true;
+  if (flags[descriptor.parentFlag] === false) return false;
+  if (flags.gameControls && flags.gameControls[gameId] === false) return false;
+  return true;
+};
+
+export const setGameControlEnabled = (
+  flags: SchoolFeatureFlags,
+  gameId: GameControlId,
+  enabled: boolean,
+  allowEnableParentModule: boolean = true
+): SchoolFeatureFlags => {
+  const descriptor = GAME_CONTROL_CATALOG.find((item) => item.id === gameId);
+  const nextGameControls = {
+    ...normalizeGameControls(flags.gameControls),
+    [gameId]: enabled,
+  };
+  const nextFlags: SchoolFeatureFlags = {
+    ...flags,
+    gameControls: nextGameControls,
+  };
+  if (descriptor && enabled && allowEnableParentModule) {
+    nextFlags[descriptor.parentFlag] = true;
+  }
+  return nextFlags;
+};
+
+export const countEnabledGames = (flags?: SchoolFeatureFlags, userRole?: UserRole): number => {
+  return GAME_CONTROL_CATALOG.filter((item) =>
+    isGameEnabledByFeatureFlags(item.id, flags, userRole)
+  ).length;
+};
+
 export const isTabEnabledByFeatureFlags = (
   tabId: string,
   flags?: SchoolFeatureFlags,
@@ -599,6 +815,26 @@ export const isTabEnabledByFeatureFlags = (
 
   const isModuleEnabled = flags[matched.key] !== false;
   if (!isModuleEnabled) return false;
+
+  // Enforce individual game toggles for standalone game tabs and EduBattle hub
+  if (
+    tabId === 'school_farm' ||
+    tabId === 'boss_raid' ||
+    tabId === 'subject_labs' ||
+    tabId === 'study_streak' ||
+    tabId === 'hall_of_fame'
+  ) {
+    if (!isGameEnabledByFeatureFlags(tabId as GameControlId, flags, userRole)) {
+      return false;
+    }
+  }
+
+  if (tabId === 'games' || tabId === 'edu_battle' || tabId === 'edu_battle_3d') {
+    const anySubGameEnabled = EDU_BATTLE_HUB_GAME_IDS.some((gid) =>
+      isGameEnabledByFeatureFlags(gid, flags, userRole)
+    );
+    if (!anySubGameEnabled) return false;
+  }
 
   // Enforce School Admin toggle for student AI usage
   if (matched.isAiModule && userRole === 'student' && flags.allowStudentsAi === false) {

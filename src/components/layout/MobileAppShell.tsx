@@ -16,7 +16,7 @@ import type { PlayerScore, TimetableSlot } from '../../types';
 import { getLocalDateString } from '../../lib/date';
 import { DEFAULT_SCHOOL_PERIODS } from '../../lib/schoolPeriods';
 import { resolveMatchedTeacherForUser, slotMatchesLoggedInTeacher } from '../../lib/courseTeacherFilter';
-import { isTabEnabledByFeatureFlags } from '../../lib/schoolFeatureFlags';
+import { isGameEnabledByFeatureFlags, isTabEnabledByFeatureFlags } from '../../lib/schoolFeatureFlags';
 import { getModuleTone } from '../../lib/moduleTheme';
 import { CALENDAR_NOTES_UPDATED_EVENT } from '../../lib/calendarNotes';
 import {
@@ -639,10 +639,11 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
   useEffect(() => {
     if (activeGameView === 'hub') return;
     const blockedGame =
-      ((activeGameView === 'arcade_studio' ||
-        activeGameView === 'battle_royale_3d' ||
-        activeGameView === '1v1_arena') &&
-        !isModuleEnabled('games')) ||
+      (activeGameView === 'arcade_studio' && !isModuleEnabled('games')) ||
+      (activeGameView === 'battle_royale_3d' &&
+        (!isModuleEnabled('games') || !isGameEnabledByFeatureFlags('battle_royale_3d', featureFlags, currentRole))) ||
+      (activeGameView === '1v1_arena' &&
+        (!isModuleEnabled('games') || !isGameEnabledByFeatureFlags('arena_1v1', featureFlags, currentRole))) ||
       (activeGameView === 'school_farm' && !isModuleEnabled('school_farm')) ||
       (activeGameView === 'boss_raid' && !isModuleEnabled('boss_raid')) ||
       (activeGameView === 'subject_labs' && !isModuleEnabled('subject_labs')) ||
@@ -1443,6 +1444,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
               currentScore={currentScore}
               playerScoresCount={playerScores.length}
               canOpenCareerQuest={canOpenCareerQuest}
+              featureFlags={featureFlags}
               isModuleEnabled={isModuleEnabled}
               openArcadeSubTab={openArcadeSubTab}
               setActiveGameView={setActiveGameView}
@@ -1658,6 +1660,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
           currentRole={currentRole}
           currentUser={currentUser}
           activeSchool={activeSchool}
+          featureFlags={featureFlags}
           linkedStudents={linkedStudents}
           students={students}
           attendance={attendance}

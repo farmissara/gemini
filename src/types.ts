@@ -1367,11 +1367,26 @@ export type SchoolFeatureFlagKey =
   | 'realworld_quests'
   | 'career_quest';
 
+export type GameControlId =
+  | 'school_farm'
+  | 'meteor_blaster'
+  | 'concept_match'
+  | 'word_builder'
+  | 'chrono_sort'
+  | 'arena_1v1'
+  | 'battle_royale_3d'
+  | 'live_room'
+  | 'boss_raid'
+  | 'subject_labs'
+  | 'study_streak'
+  | 'hall_of_fame';
+
 export interface SchoolFeatureFlags extends Record<SchoolFeatureFlagKey, boolean> {
   tier: SchoolTier;
   allowStudentsAi: boolean;
   autoDeleteSelfiesAfterCheckout?: boolean;
   selfieRetentionAfterCheckoutMinutes?: number;
+  gameControls?: Partial<Record<GameControlId, boolean>>;
 }
 
 export interface PackageLevelConfig {
