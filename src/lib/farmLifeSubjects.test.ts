@@ -7,6 +7,7 @@ import {
   generateTradeMathChallenge,
   LIFE_SUBJECT_CATALOG,
   resolveLifeSubjectChallenge,
+  shuffleOptionsForDate,
 } from './farmLifeSubjects';
 import { createInitialFarmState, normalizeFarmState } from './schoolFarmEngine';
 
@@ -114,5 +115,38 @@ describe('farmLifeSubjects', () => {
         assert.equal(new Set(scenario.options).size, 4);
       }
     }
+  });
+
+  it('randomizes answer choice order across different days while preserving the exact right answer', () => {
+    const sampleOpts = ['คำตอบที่ถูก', 'ตัวหลอก A', 'ตัวหลอก B', 'ตัวหลอก C'];
+    const dates = Array.from({ length: 10 }, (_, i) => `2026-12-${String(i + 1).padStart(2, '0')}`);
+
+    // Deterministic within the same day
+    const day1a = shuffleOptionsForDate(sampleOpts, 0, '2026-12-01', 'q-test');
+    const day1b = shuffleOptionsForDate(sampleOpts, 0, '2026-12-01', 'q-test');
+    assert.deepEqual(day1a, day1b);
+    assert.equal(day1a.options[day1a.correctIndex], 'คำตอบที่ถูก');
+
+    // Changes correctIndex & option ordering across multiple dates
+    const indicesAcrossDays = new Set(
+      dates.map((d) => {
+        const res = shuffleOptionsForDate(sampleOpts, 0, d, 'q-test');
+        assert.equal(res.options[res.correctIndex], 'คำตอบที่ถูก');
+        assert.equal(new Set(res.options).size, 4);
+        return res.correctIndex;
+      })
+    );
+    assert.ok(indicesAcrossDays.size >= 3);
+
+    // Subject challenges also vary correctIndex across days while keeping exact answer text
+    const craftIndices = new Set(
+      dates.map((d) => {
+        const c = generateCraftLifeChallenge('butterfly_pea_latte', 0, d);
+        assert.equal(c.options.length, 4);
+        assert.ok(c.options[c.correctIndex].includes('ต้มหัวเชื้อชา'));
+        return c.correctIndex;
+      })
+    );
+    assert.ok(craftIndices.size >= 2);
   });
 });

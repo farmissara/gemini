@@ -150,6 +150,7 @@ import {
   generateSocialCommChallenge,
   generateTradeMathChallenge,
   resolveLifeSubjectChallenge,
+  shuffleOptionsForDate,
   type LifeChallengeScenario,
   type LifeSubjectId,
 } from '../lib/farmLifeSubjects';
@@ -713,7 +714,9 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
           if (hitRiceFirst) riceScienceShownRef.current = true;
           setChallengeFromMatrix(false);
           setChallengePicked(null);
-          setActiveChallenge(generateCropScienceChallenge(wateredCropId, fieldActionCountRef.current));
+          setActiveChallenge(
+            generateCropScienceChallenge(wateredCropId, fieldActionCountRef.current, todayDate)
+          );
         }
       }
       return;
@@ -734,7 +737,9 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
         if (fieldActionCountRef.current % 3 === 1) {
           setChallengeFromMatrix(false);
           setChallengePicked(null);
-          setActiveChallenge(generateCropScienceChallenge(cropId, fieldActionCountRef.current));
+          setActiveChallenge(
+            generateCropScienceChallenge(cropId, fieldActionCountRef.current, todayDate)
+          );
         }
       }
       return;
@@ -769,7 +774,9 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
         if (fieldActionCountRef.current % 4 === 0) {
           setChallengeFromMatrix(false);
           setChallengePicked(null);
-          setActiveChallenge(generateCropScienceChallenge(res.cropId, fieldActionCountRef.current));
+          setActiveChallenge(
+            generateCropScienceChallenge(res.cropId, fieldActionCountRef.current, todayDate)
+          );
         }
       }
       return;
@@ -818,7 +825,8 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
           generateScenarioForSubject(
             selectedBuildingId === 'lotus_fish_pond' ? 'social' : 'arts',
             res.state,
-            tileIndex
+            tileIndex,
+            todayDate
           )
         );
       }
@@ -886,7 +894,9 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
       if (craftActionCountRef.current % 2 === 1) {
         setChallengeFromMatrix(false);
         setChallengePicked(null);
-        setActiveChallenge(generateCraftLifeChallenge(productId, craftActionCountRef.current));
+        setActiveChallenge(
+          generateCraftLifeChallenge(productId, craftActionCountRef.current, todayDate)
+        );
       }
     }
   };
@@ -994,7 +1004,13 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
       setChallengeFromMatrix(false);
       setChallengePicked(null);
       setActiveChallenge(
-        generateTradeMathChallenge(cropName, res.order.quantity, unitPrice, tradeActionCountRef.current)
+        generateTradeMathChallenge(
+          cropName,
+          res.order.quantity,
+          unitPrice,
+          tradeActionCountRef.current,
+          todayDate
+        )
       );
     }
   };
@@ -1027,10 +1043,14 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
       setChallengeFromMatrix(false);
       setChallengePicked(null);
       if (c % 2 === 1) {
-        setActiveChallenge(generateTradeMathChallenge(itemName, res.visitor.quantity, unitPrice, c));
+        setActiveChallenge(
+          generateTradeMathChallenge(itemName, res.visitor.quantity, unitPrice, c, todayDate)
+        );
       } else {
         const commBranches: Array<'foreign_lang' | 'thai' | 'social'> = ['foreign_lang', 'thai', 'social'];
-        setActiveChallenge(generateSocialCommChallenge(commBranches[c % commBranches.length], c));
+        setActiveChallenge(
+          generateSocialCommChallenge(commBranches[c % commBranches.length], c, todayDate)
+        );
       }
     }
   };
@@ -1167,7 +1187,8 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
             CROP_MAP[cropId].nameTh,
             2,
             res.coinsEarned,
-            tradeActionCountRef.current
+            tradeActionCountRef.current,
+            todayDate
           )
         );
       }
@@ -1179,7 +1200,7 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
     fieldActionCountRef.current += 1;
     setChallengeFromMatrix(true);
     setChallengePicked(null);
-    setActiveChallenge(generateScenarioForSubject(subjectId, farmState, nextIdx));
+    setActiveChallenge(generateScenarioForSubject(subjectId, farmState, nextIdx, todayDate));
   };
 
   const handleAnswerLifeChallenge = (choiceIdx: number) => {
@@ -1194,7 +1215,22 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
     }
   };
 
-  const quizPool = questions.length > 0 ? questions : FALLBACK_BOOST_QUESTIONS;
+  const quizPool = useMemo(() => {
+    const source = questions.length > 0 ? questions : FALLBACK_BOOST_QUESTIONS;
+    return source.map((q, idx) => {
+      const shuffled = shuffleOptionsForDate(
+        q.options,
+        q.correctIndex,
+        todayDate,
+        `boost-${q.id || idx}-${q.questionTh}`
+      );
+      return {
+        ...q,
+        options: shuffled.options,
+        correctIndex: shuffled.correctIndex,
+      };
+    });
+  }, [questions, todayDate]);
   const activeQuestion = quizPool[quizIndex % quizPool.length];
   const quizUsedToday = farmState.lastQuizBoostDate === todayDate ? farmState.quizBoostCountToday : 0;
 

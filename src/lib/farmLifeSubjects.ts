@@ -1,5 +1,5 @@
 import type { CropId, ProductId, SchoolFarmState } from './schoolFarmEngine';
-import { CROP_CATALOG, PRODUCT_CATALOG } from './schoolFarmEngine';
+import { CROP_CATALOG, getTodayBangkokDate, PRODUCT_CATALOG } from './schoolFarmEngine';
 
 export type LifeSubjectId =
   | 'science_tech'
@@ -109,6 +109,54 @@ export interface LifeChallengeScenario {
   rewardXp: number;
   rewardStars: number;
 }
+
+const hashSeedString = (input: string): number => {
+  let h = 2166136261;
+  for (let i = 0; i < input.length; i += 1) {
+    h ^= input.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+};
+
+const createSeededPrng = (seedNum: number): (() => number) => {
+  let s = seedNum >>> 0 || 1;
+  return () => {
+    s = (s + 0x6d2b79f5) >>> 0;
+    let t = Math.imul(s ^ (s >>> 15), 1 | s);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+};
+
+export const shuffleOptionsForDate = (
+  options: readonly string[],
+  correctIndex: number,
+  dateKey: string = getTodayBangkokDate(),
+  salt = ''
+): { options: string[]; correctIndex: number } => {
+  if (options.length <= 1) {
+    return { options: [...options], correctIndex };
+  }
+  const safeCorrectIndex = Math.max(0, Math.min(options.length - 1, correctIndex));
+  const indexed = options.map((text, origIdx) => ({
+    text,
+    isCorrect: origIdx === safeCorrectIndex,
+  }));
+  const rng = createSeededPrng(
+    hashSeedString(`${dateKey}|${salt}|${options.join('||')}`)
+  );
+  for (let i = indexed.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(rng() * (i + 1));
+    const tmp = indexed[i];
+    indexed[i] = indexed[j];
+    indexed[j] = tmp;
+  }
+  return {
+    options: indexed.map((item) => item.text),
+    correctIndex: Math.max(0, indexed.findIndex((item) => item.isCorrect)),
+  };
+};
 
 const CROP_SCIENCE_BANK: Record<
   CropId,
@@ -358,18 +406,25 @@ const CROP_SCIENCE_BANK: Record<
 
 export const generateCropScienceChallenge = (
   cropId: CropId,
-  seedIdx = 0
+  seedIdx = 0,
+  dateKey: string = getTodayBangkokDate()
 ): LifeChallengeScenario => {
   const pool = CROP_SCIENCE_BANK[cropId] || CROP_SCIENCE_BANK.jasmine_rice;
   const pick = pool[Math.abs(seedIdx) % pool.length];
+  const shuffled = shuffleOptionsForDate(
+    pick.options,
+    pick.correctIndex,
+    dateKey,
+    `sci|${cropId}|${pick.questionTh}|${seedIdx}`
+  );
   return {
     id: `sci-${cropId}-${Date.now()}-${Math.abs(seedIdx) % 99}`,
     subjectId: 'science_tech',
     subjectNameTh: LIFE_SUBJECT_MAP.science_tech.shortTh,
     contextActionTh: pick.contextActionTh,
     questionTh: pick.questionTh,
-    options: pick.options,
-    correctIndex: pick.correctIndex,
+    options: shuffled.options,
+    correctIndex: shuffled.correctIndex,
     realLifeTipTh: pick.realLifeTipTh,
     rewardCoins: 28,
     rewardWater: 2,
@@ -405,7 +460,8 @@ export const generateTradeMathChallenge = (
   itemNameTh: string,
   qty: number,
   unitPrice: number,
-  seedIdx = 0
+  seedIdx = 0,
+  dateKey: string = getTodayBangkokDate()
 ): LifeChallengeScenario => {
   const safeQty = Math.max(1, qty);
   const safePrice = Math.max(10, unitPrice);
@@ -443,9 +499,13 @@ export const generateTradeMathChallenge = (
   }
 
   const distractors = makeUniqueMathDistractors(correctValue, [-10, +10, +20, -5, +15]);
-  const insertPos = Math.abs(seedIdx + total) % 4;
-  const numericOptions = [...distractors];
-  numericOptions.splice(insertPos, 0, correctValue);
+  const baseOptions = [correctValue, ...distractors].map((n) => `${n.toLocaleString()} เหรียญ`);
+  const shuffled = shuffleOptionsForDate(
+    baseOptions,
+    0,
+    dateKey,
+    `math|${itemNameTh}|${qty}|${unitPrice}|${seedIdx}`
+  );
 
   return {
     id: `math-${Date.now()}-${Math.abs(seedIdx) % 99}`,
@@ -453,8 +513,8 @@ export const generateTradeMathChallenge = (
     subjectNameTh: LIFE_SUBJECT_MAP.math.shortTh,
     contextActionTh,
     questionTh,
-    options: numericOptions.map((n) => `${n.toLocaleString()} เหรียญ`),
-    correctIndex: insertPos,
+    options: shuffled.options,
+    correctIndex: shuffled.correctIndex,
     realLifeTipTh: tip,
     rewardCoins: 35,
     rewardWater: 1,
@@ -814,40 +874,59 @@ const COMM_SOCIAL_BANK: Record<'thai' | 'foreign_lang' | 'social', CuratedScenar
 
 export const generateCraftLifeChallenge = (
   productId: ProductId,
-  seedIdx = 0
+  seedIdx = 0,
+  dateKey: string = getTodayBangkokDate()
 ): LifeChallengeScenario => {
   const branches: Array<'career_tech' | 'health_pe' | 'arts'> = ['career_tech', 'health_pe', 'arts'];
   const pickedBranch = branches[Math.abs(seedIdx) % branches.length];
   const pool = CRAFT_SCENARIO_BANK[pickedBranch];
   const item = pool[Math.abs(seedIdx) % pool.length];
   const prod = PRODUCT_CATALOG.find((p) => p.id === productId);
+  const shuffled = shuffleOptionsForDate(
+    item.options,
+    item.correctIndex,
+    dateKey,
+    `craft|${pickedBranch}|${productId}|${item.questionTh}|${seedIdx}`
+  );
   return {
     id: `craft-${pickedBranch}-${productId}-${Date.now()}`,
     subjectNameTh: LIFE_SUBJECT_MAP[pickedBranch].shortTh,
     ...item,
+    options: shuffled.options,
+    correctIndex: shuffled.correctIndex,
     contextActionTh: prod ? `${item.contextActionTh} (${prod.nameTh})` : item.contextActionTh,
   };
 };
 
 export const generateSocialCommChallenge = (
   preferredSubject?: 'thai' | 'foreign_lang' | 'social',
-  seedIdx = 0
+  seedIdx = 0,
+  dateKey: string = getTodayBangkokDate()
 ): LifeChallengeScenario => {
   const branches: Array<'thai' | 'foreign_lang' | 'social'> = ['foreign_lang', 'thai', 'social'];
   const subject = preferredSubject || branches[Math.abs(seedIdx) % branches.length];
   const pool = COMM_SOCIAL_BANK[subject];
   const item = pool[Math.abs(seedIdx) % pool.length];
+  const shuffled = shuffleOptionsForDate(
+    item.options,
+    item.correctIndex,
+    dateKey,
+    `comm|${subject}|${item.questionTh}|${seedIdx}`
+  );
   return {
     id: `comm-${subject}-${Date.now()}`,
     subjectNameTh: LIFE_SUBJECT_MAP[subject].shortTh,
     ...item,
+    options: shuffled.options,
+    correctIndex: shuffled.correctIndex,
   };
 };
 
 export const generateScenarioForSubject = (
   subjectId: LifeSubjectId,
   farmState: SchoolFarmState,
-  seedIdx = 0
+  seedIdx = 0,
+  dateKey: string = getTodayBangkokDate()
 ): LifeChallengeScenario => {
   if (subjectId === 'science_tech') {
     const activeCropTiles = farmState.tiles.filter((t) => t.kind === 'crop' && t.cropId);
@@ -855,28 +934,44 @@ export const generateScenarioForSubject = (
       activeCropTiles.length > 0
         ? (activeCropTiles[Math.abs(seedIdx) % activeCropTiles.length].cropId as CropId)
         : CROP_CATALOG[Math.abs(seedIdx) % CROP_CATALOG.length].id;
-    return generateCropScienceChallenge(pickedCrop, seedIdx);
+    return generateCropScienceChallenge(pickedCrop, seedIdx, dateKey);
   }
   if (subjectId === 'math') {
     const prod = PRODUCT_CATALOG[Math.abs(seedIdx) % PRODUCT_CATALOG.length];
     const qty = 2 + (Math.abs(seedIdx) % 4);
-    return generateTradeMathChallenge(prod.nameTh, qty, prod.sellPrice, seedIdx);
+    return generateTradeMathChallenge(prod.nameTh, qty, prod.sellPrice, seedIdx, dateKey);
   }
   if (subjectId === 'career_tech' || subjectId === 'health_pe' || subjectId === 'arts') {
     const pool = CRAFT_SCENARIO_BANK[subjectId];
     const item = pool[Math.abs(seedIdx) % pool.length];
+    const shuffled = shuffleOptionsForDate(
+      item.options,
+      item.correctIndex,
+      dateKey,
+      `practice|${subjectId}|${item.questionTh}|${seedIdx}`
+    );
     return {
       id: `practice-${subjectId}-${Date.now()}`,
       subjectNameTh: LIFE_SUBJECT_MAP[subjectId].shortTh,
       ...item,
+      options: shuffled.options,
+      correctIndex: shuffled.correctIndex,
     };
   }
   const pool = COMM_SOCIAL_BANK[subjectId];
   const item = pool[Math.abs(seedIdx) % pool.length];
+  const shuffled = shuffleOptionsForDate(
+    item.options,
+    item.correctIndex,
+    dateKey,
+    `practice|${subjectId}|${item.questionTh}|${seedIdx}`
+  );
   return {
     id: `practice-${subjectId}-${Date.now()}`,
     subjectNameTh: LIFE_SUBJECT_MAP[subjectId].shortTh,
     ...item,
+    options: shuffled.options,
+    correctIndex: shuffled.correctIndex,
   };
 };
 
